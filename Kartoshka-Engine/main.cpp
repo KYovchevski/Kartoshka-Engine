@@ -10,5 +10,6 @@ int main()
     init.m_Height = 720;
     init.m_Title = "Kartofelnoe Pyure";
 
+
     app.Run(init);
 }

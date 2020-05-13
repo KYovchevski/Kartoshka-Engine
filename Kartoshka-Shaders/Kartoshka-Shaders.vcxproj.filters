@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{689b8ba8-52ba-45b4-be64-e06e17666726}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\Shaders\BasePixelShader.hlsl" />
+    <CustomBuild Include="..\Shaders\BaseVertexShader.hlsl" />
+  </ItemGroup>
+</Project>
