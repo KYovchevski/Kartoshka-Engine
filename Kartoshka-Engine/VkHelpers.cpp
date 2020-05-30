@@ -18,7 +18,7 @@ void krt::ThrowIfFailed(enum VkResult a_Result)
 #endif
 }
 
-krt::hlp::SwapChainSupportDetails krt::hlp::QuerySwapChainSupportDetails(VkPhysicalDevice& a_PhysicalDevice, VkSurfaceKHR& a_Surface)
+krt::hlp::SwapChainSupportDetails krt::hlp::QuerySwapChainSupportDetails(VkPhysicalDevice a_PhysicalDevice, VkSurfaceKHR a_Surface)
 {
     SwapChainSupportDetails details;
 
@@ -75,7 +75,7 @@ VkExtent2D krt::hlp::ChooseSwapChainExtent(const VkSurfaceCapabilitiesKHR& a_Sur
     return extent;
 }
 
-VkShaderModule krt::hlp::CreateShaderModule(VkDevice& a_Device, std::vector<char> a_ShaderCode)
+VkShaderModule krt::hlp::CreateShaderModule(VkDevice a_Device, std::vector<char>& a_ShaderCode)
 {
     VkShaderModuleCreateInfo moduleInfo = {};
     moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -126,7 +126,7 @@ std::vector<char> krt::hlp::LoadFile(const std::string& a_Filename)
     return output;
 }
 
-VkResult krt::vkext::CreateDebugUtilsMessengerEXT(VkInstance& a_Instance, VkDebugUtilsMessengerCreateInfoEXT& a_Info,
+VkResult krt::vkext::CreateDebugUtilsMessengerEXT(VkInstance a_Instance, VkDebugUtilsMessengerCreateInfoEXT& a_Info,
     VkAllocationCallbacks* a_AllocationCallbacks, VkDebugUtilsMessengerEXT& a_Messenger)
 {
     auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(a_Instance, "vkCreateDebugUtilsMessengerEXT");
@@ -137,7 +137,7 @@ VkResult krt::vkext::CreateDebugUtilsMessengerEXT(VkInstance& a_Instance, VkDebu
     return VK_SUCCESS;
 }
 
-VkResult krt::vkext::DestroyDebugUtilsMessengerEXT(VkInstance& a_Instance, VkDebugUtilsMessengerEXT& a_Messenger, VkAllocationCallbacks* a_Callbacks)
+VkResult krt::vkext::DestroyDebugUtilsMessengerEXT(VkInstance a_Instance, VkDebugUtilsMessengerEXT& a_Messenger, VkAllocationCallbacks* a_Callbacks)
 {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(a_Instance, "vkDestroyDebugUtilsMessengerEXT");
     if (func != nullptr)
