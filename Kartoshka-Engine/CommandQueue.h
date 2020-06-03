@@ -10,6 +10,7 @@ namespace krt
 {
     struct ServiceLocator;
     class CommandBuffer;
+    enum ECommandQueueType : uint8_t;
 }
 
 
@@ -19,7 +20,7 @@ namespace krt
     class CommandQueue
     {
     public:
-        CommandQueue(ServiceLocator& a_Services, uint32_t a_QueueFamily);
+        CommandQueue(ServiceLocator& a_Services, uint32_t a_QueueFamily, ECommandQueueType a_QueueType);
         ~CommandQueue();
 
         CommandQueue(CommandQueue&) = delete; // No copy c-tor
@@ -39,6 +40,7 @@ namespace krt
         VkCommandPool GetVkCommandPool();
         VkQueue GetVkQueue();
         uint32_t GetFamilyIndex() const { return m_QueueFamilyIndex; }
+        ECommandQueueType GetType() const { return m_QueueType; }
 
     private:
 
@@ -50,6 +52,8 @@ namespace krt
         VkQueue             m_VkQueue;
         VkCommandPool       m_VkCommandPool;
         uint32_t            m_QueueFamilyIndex;
+
+        ECommandQueueType   m_QueueType;
 
         // List of all command buffers created by the queue
         std::vector<std::unique_ptr<CommandBuffer>> m_SingleUseCommandBuffers;

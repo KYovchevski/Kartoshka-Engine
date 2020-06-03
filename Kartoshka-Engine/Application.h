@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <map>
 
 namespace krt
 {
@@ -16,6 +17,9 @@ namespace krt
     class RenderPass;
     class GraphicsPipeline;
     class VertexBuffer;
+    class DescriptorSetPool;
+    class Texture;
+    class Sampler;
 }
 
 
@@ -67,7 +71,7 @@ namespace krt
         void                CreateRenderPass();
         void                CreateSemaphores();
 
-        void                CreateVertexBuffer();
+        void                LoadAssets();
 
         void                DrawFrame();
         void Cleanup();     // Cleans up after the application is finished running
@@ -102,7 +106,10 @@ namespace krt
         std::unique_ptr<RenderPass>     m_ForwardRenderPass;
         std::unique_ptr<GraphicsPipeline> m_GraphicsPipeline;
 
-        std::unique_ptr<VertexBuffer> m_TriangleVertexBuffer;
+        std::unique_ptr<VertexBuffer>   m_TriangleVertexBuffer;
+        std::unique_ptr<VertexBuffer>   m_TexCoords;
+        std::unique_ptr<Texture>        m_Texture;
+        std::unique_ptr<Sampler>        m_Sampler;
     };
 
     

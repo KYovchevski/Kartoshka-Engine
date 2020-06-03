@@ -1,16 +1,20 @@
 #pragma once
 
+#include <map>
+
 #include "vulkan/vulkan.h"
 
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 namespace krt
 {
     struct ServiceLocator;
     class RenderPass;
     class CommandBuffer;
+    class DescriptorSetPool;
 }
 
 namespace krt
@@ -111,6 +115,18 @@ namespace krt
         VkPipelineDepthStencilStateCreateInfo m_VkDepthStencilInfo;
     };
 
+    class PipelineLayoutInfo
+    {
+    public:
+        void AddLayoutBinding(uint32_t a_Set, uint32_t a_Binding, VkShaderStageFlags a_ShaderStage, VkDescriptorType a_Type, uint32_t a_Count = 1);
+
+        std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>& GetDescriptorSetLayouts();
+
+    private:
+        //       set index
+        std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> m_LayoutBindings;
+    };
+
     class GraphicsPipeline
     {
         friend CommandBuffer;
@@ -123,6 +139,7 @@ namespace krt
             std::string m_FragmentShaderFilepath;
 
             VertexInputInfo m_VertexInput;
+            PipelineLayoutInfo m_PipelineLayout;
             PrimitiveAssemblyInfo m_PrimitiveAssemblyInfo;
             RasterizationStateInfo m_RasterizationStateInfo;
             MultisampleInfo m_MultisampleInfo;
@@ -145,10 +162,16 @@ namespace krt
     private:
         VkShaderModule CreateShaderModule(std::string a_Filepath);
 
+        void CreateDescriptorSetPools(std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>& a_Bindings);
+
+        std::vector<VkDescriptorSetLayout> GetDescriptorLayouts();
+
         ServiceLocator& m_Services;
 
         VkPipelineLayout m_VkPipelineLayout;
         VkPipeline m_VkPipeline;
+
+        std::map<uint32_t, std::unique_ptr<DescriptorSetPool>> m_DescriptorSetPools;
     };
 
 #include "GraphicsPipeline.inl"

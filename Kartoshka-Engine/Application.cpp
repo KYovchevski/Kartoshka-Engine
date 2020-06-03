@@ -9,6 +9,9 @@
 #include "CommandQueue.h"
 #include "VertexBuffer.h"
 #include "CommandBuffer.h"
+#include "DescriptorSetPool.h"
+#include "Texture.h"
+#include "Sampler.h"
 
 #include "VkHelpers.h"
 #include "VkConstants.h"
@@ -125,8 +128,9 @@ void krt::Application::InitializeVulkan(const InitializationInfo& a_Info)
 
     m_Window->CreateFramebuffers(*m_ForwardRenderPass);
 
-    CreateVertexBuffer();
+    LoadAssets();
     CreateSemaphores();
+
 }
 
 void krt::Application::SetupDebugMessenger()
@@ -159,8 +163,14 @@ void krt::Application::CreateGraphicsPipeline()
 
     pipelineInfo.m_ColorBlendInfo->pAttachments = &colorAttachment;
     pipelineInfo.m_ColorBlendInfo->attachmentCount = 1;
-    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(0, 0, VK_FORMAT_R32G32B32_SFLOAT);
-    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(1, 1, VK_FORMAT_R32G32B32_SFLOAT);
+
+    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec2>(0, 0, VK_FORMAT_R32G32_SFLOAT); // Tex Coords
+    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(1, 1, VK_FORMAT_R32G32B32_SFLOAT); // Positions
+
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 0, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 2, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
     pipelineInfo.m_RenderPass = m_ForwardRenderPass.get();
     pipelineInfo.m_SubpassIndex = 0;
 
@@ -250,7 +260,7 @@ void krt::Application::CreateSemaphores()
     ThrowIfFailed(vkCreateSemaphore(m_ServiceLocator->m_LogicalDevice->GetVkDevice(), &semaphoreInfo, nullptr, &m_RenderFinishedSemaphore));
 }
 
-void krt::Application::CreateVertexBuffer()
+void krt::Application::LoadAssets()
 {
     std::vector<glm::vec3> positions = 
     {
@@ -259,11 +269,24 @@ void krt::Application::CreateVertexBuffer()
         {0.5f, -0.25f, 0.0f}
     };
 
+    std::vector<glm::vec2> tex =
+    {
+        {0.0f, 0.0f},
+        {1.0f, 0.0f},
+        {0.0f, 1.0f}
+    };
+
     auto& transferQueue = m_LogicalDevice->GetCommandQueue(ETransferQueue);
     auto& commandBuffer = transferQueue.GetSingleUseCommandBuffer();
 
     commandBuffer.Begin();
     m_TriangleVertexBuffer = commandBuffer.CreateVertexBuffer(positions, { EGraphicsQueue });
+    m_TexCoords = commandBuffer.CreateVertexBuffer(tex, { EGraphicsQueue });
+
+    m_Texture = commandBuffer.CreateTextureFromFile("../../../../Assets/Textures/debugTex.png", {EGraphicsQueue});
+    auto samplerInfo = Sampler::CreateInfo::CreateDefault();
+    m_Sampler = std::make_unique<Sampler>(*m_ServiceLocator, samplerInfo);
+
     commandBuffer.Submit();
 
     transferQueue.Flush();
@@ -291,20 +314,28 @@ void krt::Application::DrawFrame()
     auto& commandBuffer = m_LogicalDevice->GetCommandQueue(EGraphicsQueue).GetSingleUseCommandBuffer();
     commandBuffer.Begin();
     commandBuffer.BeginRenderPass(*m_ForwardRenderPass, frameInfo.m_Framebuffer, m_Window->GetScreenRenderArea());
-
     commandBuffer.SetScissorRect(scissor);
     commandBuffer.SetViewport(viewport);
     commandBuffer.BindPipeline(*m_GraphicsPipeline);
-    commandBuffer.SetVertexBuffer(*m_TriangleVertexBuffer, 0);
+
+    commandBuffer.SetVertexBuffer(*m_TexCoords, 0);
     commandBuffer.SetVertexBuffer(*m_TriangleVertexBuffer, 1);
+
+    static float time = 0.0f;
+    time += 1.0f / 60.0f;
+
+    glm::vec3 offset = glm::vec3(std::sin(time / 10.0f) / 2.0f, 0.0f, 0.0f);
+    
+    commandBuffer.SetUniformBuffer(offset,0, 0);
+    commandBuffer.SetSampler(*m_Sampler, 1, 0);
+    commandBuffer.SetTexture(*m_Texture, 2, 0);
     commandBuffer.Draw(m_TriangleVertexBuffer->GetElementCount());
 
     commandBuffer.EndRenderPass();
-
     commandBuffer.AddSignalSemaphore(m_RenderFinishedSemaphore);
     commandBuffer.AddWaitSemaphore(m_ImageAvailableSemaphore);
     commandBuffer.SetWaitStages(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    commandBuffer.Submit();//*/
+    commandBuffer.Submit();
 
     auto& presentQueue = m_ServiceLocator->m_LogicalDevice->GetCommandQueue(EPresentQueue);
     std::vector<VkSemaphore> presentSemaphores;

@@ -3,6 +3,7 @@
 #include "ServiceLocator.h"
 #include "LogicalDevice.h"
 #include "RenderPass.h"
+#include "DescriptorSetPool.h"
 
 #include "VkHelpers.h"
 
@@ -169,6 +170,22 @@ krt::DepthStencilInfo::DepthStencilInfo()
     m_VkDepthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 }
 
+void krt::PipelineLayoutInfo::AddLayoutBinding(uint32_t a_Set, uint32_t a_Binding, VkShaderStageFlags a_ShaderStage, VkDescriptorType a_Type, uint32_t a_Count)
+{
+    auto& binding = m_LayoutBindings[a_Set].emplace_back();
+    binding.binding = a_Binding;
+    binding.descriptorCount = a_Count;
+    binding.descriptorType = a_Type;
+    binding.stageFlags = a_ShaderStage;
+    binding.pImmutableSamplers = nullptr;
+
+}
+
+std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>& krt::PipelineLayoutInfo::GetDescriptorSetLayouts()
+{
+    return m_LayoutBindings;
+}
+
 krt::GraphicsPipeline::CreateInfo::CreateInfo()
     : m_VertexShaderFilepath("")
     , m_FragmentShaderFilepath("")
@@ -221,12 +238,15 @@ krt::GraphicsPipeline::GraphicsPipeline(ServiceLocator& a_Services, CreateInfo& 
     viewportInfo.viewportCount = static_cast<uint32_t>(a_CreateInfo.m_Viewports.size());
     viewportInfo.pViewports = a_CreateInfo.m_Viewports.data();
 
+    CreateDescriptorSetPools(a_CreateInfo.m_PipelineLayout.GetDescriptorSetLayouts());
+    auto descriptorSets = GetDescriptorLayouts();
+
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layoutInfo.pPushConstantRanges = nullptr;
     layoutInfo.pushConstantRangeCount = 0;
-    layoutInfo.pSetLayouts = nullptr;
-    layoutInfo.setLayoutCount = 0;
+    layoutInfo.pSetLayouts = descriptorSets.data();
+    layoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSets.size());
 
     ThrowIfFailed(vkCreatePipelineLayout(m_Services.m_LogicalDevice->GetVkDevice(), &layoutInfo, m_Services.m_AllocationCallbacks, &m_VkPipelineLayout));
 
@@ -280,4 +300,34 @@ VkShaderModule krt::GraphicsPipeline::CreateShaderModule(std::string a_Filepath)
 
 
     return VK_NULL_HANDLE;
+}
+
+void krt::GraphicsPipeline::CreateDescriptorSetPools(
+    std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>& a_SetBindings)
+{
+    for (auto& set : a_SetBindings)
+    {
+        std::map<VkDescriptorType, uint32_t> descriptorMap;
+        // Extract what types of descriptors are needed and in what amounts from the bindings.
+        for (auto& binding : set.second)
+        {
+            descriptorMap[binding.descriptorType] += binding.descriptorCount;
+        }
+
+        // Yes, a magic number. TODO: Replace magic number with a value which can be specified during initialization of the pipeline
+        auto pool = std::make_unique<DescriptorSetPool>(m_Services, set.second, descriptorMap, 32);
+
+        m_DescriptorSetPools.emplace(std::make_pair(set.first, std::move(pool)));
+    }
+}
+
+std::vector<VkDescriptorSetLayout> krt::GraphicsPipeline::GetDescriptorLayouts()
+{
+    std::vector<VkDescriptorSetLayout> layouts;
+    for (auto& set : m_DescriptorSetPools)
+    {
+        layouts.push_back(set.second->GetSetLayout());
+    }
+
+    return layouts;
 }

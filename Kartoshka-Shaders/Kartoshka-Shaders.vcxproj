@@ -139,17 +139,28 @@
     <PostBuildEvent>
       <Command>call $(SolutionDir)/Tools/CompileShaders.bat "$(OutputDir)"</Command>
     </PostBuildEvent>
+    <CustomBuild>
+      <Command>call "$(SolutionDir)Tools\ShaderCompile.bat" "$(SolutionDir)Shaders\%(Filename)" "$(OutDir)"</Command>
+      <Message>Compiling %(Filename).spv</Message>
+      <Outputs>%(Filename).spv</Outputs>
+    </CustomBuild>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\Shaders\FragmentShader.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">call "$(SolutionDir)Tools\ShaderCompile.bat" "$(SolutionDir)Shaders\%(Filename)" "$(OutDir)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Filename).spv</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).spv</Outputs>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </CustomBuild>
+  </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\Shaders\BasePixelShader.hlsl">
       <FileType>Document</FileType>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Filename).spv</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">call "$(SolutionDir)Tools\ShaderCompile.bat" "$(SolutionDir)Shaders\%(Filename)" "$(OutDir)"</Command>
     </CustomBuild>
     <CustomBuild Include="..\Shaders\BaseVertexShader.hlsl">
       <FileType>Document</FileType>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Filename).spv</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">call "$(SolutionDir)Tools\ShaderCompile.bat" "$(SolutionDir)Shaders\%(Filename)" "$(OutDir)"</Command>
     </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

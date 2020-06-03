@@ -94,6 +94,7 @@ void krt::LogicalDevice::InitializeDevice()
     auto requiredExtensions = GetRequiredExtensions();
 
     VkPhysicalDeviceFeatures physicalDeviceFeatures{};
+    physicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
 
     assert(ValidateExtensionSupport(requiredExtensions));
 
@@ -102,8 +103,6 @@ void krt::LogicalDevice::InitializeDevice()
     deviceCreateInfo.pQueueCreateInfos = queueInfos.data();
     deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueInfos.size());
     deviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
-    //deviceCreateInfo.ppEnabledExtensionNames = requiredExtensions.data();
-    //deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size());
 
     deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(constants::VkDeviceExtensions.size());
     deviceCreateInfo.ppEnabledExtensionNames = constants::VkDeviceExtensions.data();
@@ -114,10 +113,10 @@ void krt::LogicalDevice::InitializeDevice()
 #endif
 
     ThrowIfFailed(vkCreateDevice(m_Services.m_PhysicalDevice->GetPhysicalDevice(), &deviceCreateInfo, nullptr, &m_VkLogicalDevice));
-    m_CommandQueues[EGraphicsQueue] = std::make_unique<CommandQueue>(m_Services, queueFamilies.m_GraphicsQueueIndex.value());
-    m_CommandQueues[EComputeQueue] = std::make_unique<CommandQueue>(m_Services, queueFamilies.m_ComputeQueueIndex.value());
-    m_CommandQueues[EPresentQueue] = std::make_unique<CommandQueue>(m_Services, queueFamilies.m_PresentQueueIndex.value());
-    m_CommandQueues[ETransferQueue] = std::make_unique<CommandQueue>(m_Services, queueFamilies.m_TransferQueueIndex.value());
+    m_CommandQueues[EGraphicsQueue] = std::make_unique<CommandQueue>(m_Services, queueFamilies.m_GraphicsQueueIndex.value(), EGraphicsQueue);
+    m_CommandQueues[EComputeQueue] = std::make_unique<CommandQueue>(m_Services, queueFamilies.m_ComputeQueueIndex.value(), EComputeQueue);
+    m_CommandQueues[EPresentQueue] = std::make_unique<CommandQueue>(m_Services, queueFamilies.m_PresentQueueIndex.value(), EPresentQueue);
+    m_CommandQueues[ETransferQueue] = std::make_unique<CommandQueue>(m_Services, queueFamilies.m_TransferQueueIndex.value(), ETransferQueue);
 }
 
 VkDevice krt::LogicalDevice::GetVkDevice() const

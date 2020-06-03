@@ -71,12 +71,38 @@ VkPhysicalDevice krt::PhysicalDevice::GetPhysicalDevice()
     return m_VkPhysicalDevice;
 }
 
-uint32_t krt::PhysicalDevice::FindMemoryType(VkBuffer a_TargetBuffer, VkMemoryPropertyFlags a_Properties)
+krt::PhysicalDevice::MemoryInfo krt::PhysicalDevice::GetMemoryInfoForBuffer(VkBuffer a_Buffer,
+    VkMemoryPropertyFlags a_MemProperties)
 {
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(m_Services.m_LogicalDevice->GetVkDevice(), a_TargetBuffer, &memRequirements);
+    vkGetBufferMemoryRequirements(m_Services.m_LogicalDevice->GetVkDevice(), a_Buffer, &memRequirements);
 
-    return hlp::FindMemoryType(m_VkPhysicalDevice, memRequirements.memoryTypeBits, a_Properties);
+    MemoryInfo info = {};
+    info.m_Alignment = memRequirements.alignment;
+    info.m_Size = memRequirements.size;
+    info.m_MemoryType = FindMemoryType(memRequirements.memoryTypeBits, a_MemProperties);
+
+    return info;
+}
+
+krt::PhysicalDevice::MemoryInfo krt::PhysicalDevice::GetMemoryInfoForImage(VkImage a_Image,
+    VkMemoryPropertyFlags a_MemProperties)
+{
+    VkMemoryRequirements memReq;
+    vkGetImageMemoryRequirements(m_Services.m_LogicalDevice->GetVkDevice(), a_Image, &memReq);
+
+    MemoryInfo info = {};
+    info.m_Alignment = memReq.alignment;
+    info.m_Size = memReq.size;
+    info.m_MemoryType = FindMemoryType(memReq.memoryTypeBits, a_MemProperties);
+
+    return info;
+}
+
+uint32_t krt::PhysicalDevice::FindMemoryType(uint32_t a_MemoryType, VkMemoryPropertyFlags a_Properties)
+{
+
+    return hlp::FindMemoryType(m_VkPhysicalDevice, a_MemoryType, a_Properties);
 }
 
 bool krt::PhysicalDevice::IsDeviceSuitable(VkPhysicalDevice a_PhysicalDevice, VkSurfaceKHR a_TargetSurface, std::vector<const char*>& a_ReqExtensions)
@@ -89,8 +115,10 @@ bool krt::PhysicalDevice::IsDeviceSuitable(VkPhysicalDevice a_PhysicalDevice, Vk
     const auto swapChainDetails = hlp::QuerySwapChainSupportDetails(a_PhysicalDevice, a_TargetSurface);
     const bool swapChainSupported = !swapChainDetails.m_SurfaceFormats.empty() && !swapChainDetails.m_PresentModes.empty();
 
+    VkPhysicalDeviceFeatures features;
+    vkGetPhysicalDeviceFeatures(a_PhysicalDevice, &features);
 
-    return indices.IsComplete() && extensionsSupported && swapChainSupported;
+    return indices.IsComplete() && extensionsSupported && swapChainSupported && features.samplerAnisotropy == VK_TRUE;
 }
 
 krt::QueueFamilyIndices krt::PhysicalDevice::GetQueueFamilyIndicesForDevice(VkPhysicalDevice a_Device, VkSurfaceKHR a_TargetSurface)

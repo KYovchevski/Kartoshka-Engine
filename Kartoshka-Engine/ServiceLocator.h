@@ -1,10 +1,14 @@
 #pragma once
 
+#include <map>
+#include <memory>
+
 namespace krt
 {
     class Window;
     class PhysicalDevice;
     class LogicalDevice;
+    class DescriptorSetPool;
 }
 
 namespace krt

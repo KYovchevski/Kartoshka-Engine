@@ -40,9 +40,17 @@ namespace krt
         const QueueFamilyIndices& GetQueueFamilyIndices() const;
         VkPhysicalDevice GetPhysicalDevice();
 
-        uint32_t FindMemoryType(VkBuffer a_TargetBuffer, VkMemoryPropertyFlags a_Properties);
+        struct MemoryInfo
+        {
+            uint32_t m_MemoryType;
+            VkDeviceSize m_Size;
+            VkDeviceSize m_Alignment;
+        };
+        MemoryInfo GetMemoryInfoForBuffer(VkBuffer a_Buffer, VkMemoryPropertyFlags a_MemProperties);
+        MemoryInfo GetMemoryInfoForImage(VkImage a_Image, VkMemoryPropertyFlags a_MemProperties);
 
     private:
+        uint32_t FindMemoryType(uint32_t a_MemoryType, VkMemoryPropertyFlags a_Properties);
         static bool IsDeviceSuitable(VkPhysicalDevice a_PhysicalDevice, VkSurfaceKHR a_TargetSurface, std::vector<const char*>& a_ReqExtensions);
         static QueueFamilyIndices GetQueueFamilyIndicesForDevice(VkPhysicalDevice a_Device, VkSurfaceKHR a_TargetSurface);
         static bool CheckExtensionSupportForDevice(VkPhysicalDevice a_Device, std::vector<const char*>& a_ReqExtensions);

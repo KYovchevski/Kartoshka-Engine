@@ -31,6 +31,8 @@ namespace krt
 
         VkShaderModule          CreateShaderModule(VkDevice a_Device, std::vector<char>& a_ShaderCode);
 
+        VkFormat                PickTextureFormat(uint8_t a_NumChannels);
+
         uint32_t                FindMemoryType(const VkPhysicalDevice& a_PhysicalDevice, uint32_t a_TypeFilter, VkMemoryPropertyFlags a_MemoryProperties);
 
         std::vector<char>       LoadFile(const std::string& a_Filename);

@@ -5,9 +5,10 @@
 
 #include "ServiceLocator.h"
 
-krt::CommandQueue::CommandQueue(ServiceLocator& a_Services, uint32_t a_QueueFamily)
+krt::CommandQueue::CommandQueue(ServiceLocator& a_Services, uint32_t a_QueueFamily, ECommandQueueType a_QueueType)
     : m_Services(a_Services)
     , m_QueueFamilyIndex(a_QueueFamily)
+    , m_QueueType(a_QueueType)
 {
     vkGetDeviceQueue(m_Services.m_LogicalDevice->GetVkDevice(), m_QueueFamilyIndex, 0, &m_VkQueue);
 

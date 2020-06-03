@@ -89,8 +89,26 @@ VkShaderModule krt::hlp::CreateShaderModule(VkDevice a_Device, std::vector<char>
     return shaderModule;
 }
 
+VkFormat krt::hlp::PickTextureFormat(uint8_t a_NumChannels)
+{
+    assert(a_NumChannels > 0 && a_NumChannels <= 4);
+    switch (a_NumChannels)
+    {
+    case 1:
+        return VK_FORMAT_R8_UNORM;
+    case 2:
+        return VK_FORMAT_R8G8_SRGB;
+    case 3:
+        return VK_FORMAT_R8G8B8_SRGB;
+    case 4:
+        return VK_FORMAT_R8G8B8A8_SRGB;
+    }
+
+    abort();
+}
+
 uint32_t krt::hlp::FindMemoryType(const VkPhysicalDevice& a_PhysicalDevice, uint32_t a_TypeFilter,
-    VkMemoryPropertyFlags a_MemoryProperties)
+                                  VkMemoryPropertyFlags a_MemoryProperties)
 {
     VkPhysicalDeviceMemoryProperties physicalDeviceMemory;
 
