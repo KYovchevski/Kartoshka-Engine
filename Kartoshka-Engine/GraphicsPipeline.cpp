@@ -4,6 +4,7 @@
 #include "LogicalDevice.h"
 #include "RenderPass.h"
 #include "DescriptorSetPool.h"
+#include "DescriptorSetAllocation.h"
 
 #include "VkHelpers.h"
 
@@ -160,6 +161,13 @@ krt::DepthStencilInfo krt::DepthStencilInfo::CreateDefault()
 {
     DepthStencilInfo info;
 
+    info->minDepthBounds = 0.0f;
+    info->maxDepthBounds = 1.0f;
+    info->depthTestEnable = VK_TRUE;
+    info->depthWriteEnable = VK_TRUE;
+    info->depthCompareOp = VK_COMPARE_OP_LESS;
+    info->depthBoundsTestEnable = VK_TRUE;
+    info->stencilTestEnable = VK_FALSE;
 
     return info;
 }
@@ -195,6 +203,7 @@ krt::GraphicsPipeline::CreateInfo::CreateInfo()
     , m_MultisampleInfo(MultisampleInfo::CreateDefault())
     , m_ColorBlendAttachment(ColorBlendAttachment::CreateDefault())
     , m_ColorBlendInfo(ColorBlendInfo::CreateDefault())
+    , m_DepthStencilInfo(DepthStencilInfo::CreateDefault())
     , m_DynamicStates(std::vector<VkDynamicState>())
     , m_Viewports(std::vector<VkViewport>())
     , m_ScissorRects(std::vector<VkRect2D>())
@@ -262,7 +271,7 @@ krt::GraphicsPipeline::GraphicsPipeline(ServiceLocator& a_Services, CreateInfo& 
     graphicsPipelineInfo.pRasterizationState = &a_CreateInfo.m_RasterizationStateInfo;
     graphicsPipelineInfo.pMultisampleState = &a_CreateInfo.m_MultisampleInfo;
     graphicsPipelineInfo.pColorBlendState = &a_CreateInfo.m_ColorBlendInfo;
-    graphicsPipelineInfo.pDepthStencilState = nullptr;
+    graphicsPipelineInfo.pDepthStencilState = &a_CreateInfo.m_DepthStencilInfo;
 
     graphicsPipelineInfo.layout = m_VkPipelineLayout;
     graphicsPipelineInfo.pDynamicState = &dynamicStateInfo;
@@ -285,6 +294,11 @@ krt::GraphicsPipeline::~GraphicsPipeline()
 {
     vkDestroyPipeline(m_Services.m_LogicalDevice->GetVkDevice(), m_VkPipeline, m_Services.m_AllocationCallbacks);
     vkDestroyPipelineLayout(m_Services.m_LogicalDevice->GetVkDevice(), m_VkPipelineLayout, m_Services.m_AllocationCallbacks);
+}
+
+std::unique_ptr<krt::DescriptorSetAllocation> krt::GraphicsPipeline::AllocateDescriptorSet(uint32_t a_Slot)
+{
+    return m_DescriptorSetPools[a_Slot]->GetDescriptorSet();
 }
 
 VkShaderModule krt::GraphicsPipeline::CreateShaderModule(std::string a_Filepath)

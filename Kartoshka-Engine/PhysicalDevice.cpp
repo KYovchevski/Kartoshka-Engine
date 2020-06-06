@@ -99,6 +99,29 @@ krt::PhysicalDevice::MemoryInfo krt::PhysicalDevice::GetMemoryInfoForImage(VkIma
     return info;
 }
 
+VkFormat krt::PhysicalDevice::FindSupportedFormat(std::vector<VkFormat> a_Candidates, VkImageTiling a_Tiling,
+    VkFormatFeatureFlags a_Features)
+{
+    for (auto& format : a_Candidates)
+    {
+        VkFormatProperties properties;
+        vkGetPhysicalDeviceFormatProperties(m_VkPhysicalDevice, format, &properties);
+
+        if (a_Tiling == VK_IMAGE_TILING_LINEAR)
+        {
+            if ((properties.linearTilingFeatures & a_Features) == a_Features)
+                return format;
+        }
+        else if (a_Tiling == VK_IMAGE_TILING_OPTIMAL)
+        {
+            if ((properties.optimalTilingFeatures & a_Features) == a_Features)
+                return format;
+        }
+        
+    }
+    return VK_FORMAT_UNDEFINED;
+}
+
 uint32_t krt::PhysicalDevice::FindMemoryType(uint32_t a_MemoryType, VkMemoryPropertyFlags a_Properties)
 {
 

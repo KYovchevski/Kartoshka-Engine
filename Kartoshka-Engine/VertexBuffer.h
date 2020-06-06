@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Buffer.h"
+
 #include "vulkan/vulkan.h"
 
 namespace krt
@@ -11,7 +13,7 @@ namespace krt
 namespace krt
 {
 
-    class VertexBuffer
+    class VertexBuffer : public Buffer
     {
         friend CommandBuffer;
     public:
@@ -23,10 +25,6 @@ namespace krt
 
     private:
 
-        ServiceLocator& m_Services;
-
-        VkBuffer m_VkBuffer;
-        VkDeviceMemory m_VkDeviceMemory;
         uint32_t m_NumElements;
         
     };

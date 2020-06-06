@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@ namespace krt
     struct ServiceLocator;
     class CommandQueue;
     class PhysicalDevice;
+    class Buffer;
 }
 
 namespace krt
@@ -46,6 +48,13 @@ namespace krt
         VkInstance          GetVkInstance() const;
         CommandQueue&       GetCommandQueue(const ECommandQueueType a_Type);
 
+        template<typename BufferType = Buffer>
+        std::unique_ptr<BufferType> CreateBuffer(uint64_t a_Size, VkBufferUsageFlags a_Usage,
+            VkMemoryPropertyFlags a_MemoryProperties, const std::set<ECommandQueueType>& a_QueuesWithAccess);
+
+        void CopyToDeviceMemory(VkDeviceMemory a_DeviceMemory, const void* a_Data, uint64_t a_DataSize);
+
+        std::vector<uint32_t> GetQueueIndices(const std::set<ECommandQueueType>& a_Queues);
 
     private:
 
@@ -56,6 +65,9 @@ namespace krt
         std::vector<VkDeviceQueueCreateInfo> GenerateQueueInfos();
 
     private:
+        std::pair<VkBuffer, VkDeviceMemory> CreateBufferElements(uint64_t a_Size, VkBufferUsageFlags a_Usage,
+            VkMemoryPropertyFlags a_MemoryProperties, const std::set<ECommandQueueType>& a_QueuesWithAccess);
+
         ServiceLocator& m_Services;
 
         VkInstance                      m_VkInstance;
@@ -65,3 +77,5 @@ namespace krt
     };
 
 }
+
+#include "LogicalDevice.inl"

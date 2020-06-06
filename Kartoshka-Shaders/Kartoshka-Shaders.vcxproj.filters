@@ -6,9 +6,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\Shaders\FragmentShader.glsl" />
-  </ItemGroup>
-  <ItemGroup>
     <FxCompile Include="..\Shaders\BasePixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>

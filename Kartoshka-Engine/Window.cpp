@@ -89,32 +89,12 @@ void krt::Window::InitializeSwapchain()
     CreateImageViews();
 }
 
-void krt::Window::CreateFramebuffers(RenderPass& a_ForwardRenderPass)
-{
-    m_Framebuffers.reserve(m_SwapChainImages.size());
-
-    for (auto imageView : m_SwapChainImageViews)
-    {
-        auto& framebuffer =  m_Framebuffers.emplace_back();
-        VkFramebufferCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        info.width = m_ScreenSize.x;
-        info.height = m_ScreenSize.y;
-        info.pAttachments = &imageView;
-        info.attachmentCount = 1;
-        info.renderPass = a_ForwardRenderPass.GetVkRenderPass();
-        info.layers = 1;
-        
-        vkCreateFramebuffer(m_Services.m_LogicalDevice->GetVkDevice(), &info, m_Services.m_AllocationCallbacks, &framebuffer);
-    }
-}
-
-krt::Window::NextFrameInfo krt::Window::GetNextFramebuffer(VkSemaphore a_SemaphoreToSignal, VkFence a_FenceToSignal)
+krt::Window::NextFrameInfo krt::Window::GetNextFrameInfo(VkSemaphore a_SemaphoreToSignal, VkFence a_FenceToSignal)
 {
     NextFrameInfo info;
 
     vkAcquireNextImageKHR(m_Services.m_LogicalDevice->GetVkDevice(), m_VkSwapChain, std::numeric_limits<uint64_t>::max(), a_SemaphoreToSignal, a_FenceToSignal, &info.m_FrameIndex);
-    info.m_Framebuffer = m_Framebuffers[info.m_FrameIndex];
+    info.m_ImageView = m_SwapChainImageViews[info.m_FrameIndex];
     return info;
 }
 

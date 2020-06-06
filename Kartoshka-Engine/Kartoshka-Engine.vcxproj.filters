@@ -66,6 +66,18 @@
     <ClCompile Include="DescriptorSetAllocation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DepthBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Framebuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorSet.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Buffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -119,12 +131,30 @@
     <ClInclude Include="DescriptorSetAllocation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DepthBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Framebuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DescriptorSet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Buffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GraphicsPipeline.inl">
       <Filter>Source Files</Filter>
     </None>
     <None Include="CommandBuffer.inl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="LogicalDevice.inl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="DescriptorSet.inl">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>

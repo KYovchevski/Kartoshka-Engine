@@ -14,6 +14,7 @@ krt::DescriptorSetPool::DescriptorSetPool(ServiceLocator& a_Services, std::vecto
     : m_Services(a_Services)
     , m_BindingsMap(a_BindingsMap)
     , m_PageCapcity(a_PageCapacity)
+    , m_Bindings(a_Bindings)
 {
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -43,7 +44,8 @@ std::unique_ptr<krt::DescriptorSetAllocation> krt::DescriptorSetPool::GetDescrip
     if (pageToAllocateOn)
         return pageToAllocateOn->AllocateDescriptorSet();
 
-    auto& newPage = m_Pages.emplace_back(std::make_unique<DescriptorSetPoolPage>(m_Services, m_VkDescriptorSetLayout, m_BindingsMap, m_PageCapcity));
+    auto& newPage = m_Pages.emplace_back(
+        std::make_unique<DescriptorSetPoolPage>(m_Services, m_VkDescriptorSetLayout, m_BindingsMap, m_PageCapcity, *this));
 
     return newPage->AllocateDescriptorSet();
 }

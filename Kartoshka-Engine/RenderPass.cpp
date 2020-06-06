@@ -1,6 +1,7 @@
 #include "RenderPass.h"
 #include "ServiceLocator.h"
 #include "LogicalDevice.h"
+#include "Framebuffer.h"
 #include "VkHelpers.h"
 
 krt::RenderPass::RenderPass(ServiceLocator& a_Services, CreateInfo a_CreateInfo)
@@ -22,6 +23,11 @@ krt::RenderPass::RenderPass(ServiceLocator& a_Services, CreateInfo a_CreateInfo)
 krt::RenderPass::~RenderPass()
 {
     vkDestroyRenderPass(m_Services.m_LogicalDevice->GetVkDevice(), m_VkRenderPass, m_Services.m_AllocationCallbacks);
+}
+
+std::unique_ptr<krt::Framebuffer> krt::RenderPass::CreateFramebuffer()
+{
+    return std::make_unique<Framebuffer>(m_Services, this);
 }
 
 VkRenderPass krt::RenderPass::GetVkRenderPass()

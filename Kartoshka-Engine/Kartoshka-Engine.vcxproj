@@ -142,11 +142,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="CommandBuffer.cpp" />
     <ClCompile Include="CommandQueue.cpp" />
+    <ClCompile Include="DepthBuffer.cpp" />
+    <ClCompile Include="DescriptorSet.cpp" />
     <ClCompile Include="DescriptorSetAllocation.cpp" />
     <ClCompile Include="DescriptorSetPool.cpp" />
     <ClCompile Include="DescriptorSetPoolPage.cpp" />
+    <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="GraphicsPipeline.cpp" />
     <ClCompile Include="LogicalDevice.cpp" />
     <ClCompile Include="main.cpp" />
@@ -161,11 +165,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
+    <ClInclude Include="Buffer.h" />
     <ClInclude Include="CommandBuffer.h" />
     <ClInclude Include="CommandQueue.h" />
+    <ClInclude Include="DepthBuffer.h" />
+    <ClInclude Include="DescriptorSet.h" />
     <ClInclude Include="DescriptorSetAllocation.h" />
     <ClInclude Include="DescriptorSetPool.h" />
     <ClInclude Include="DescriptorSetPoolPage.h" />
+    <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="GraphicsPipeline.h" />
     <ClInclude Include="LogicalDevice.h" />
     <ClInclude Include="PhysicalDevice.h" />
@@ -180,7 +188,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="CommandBuffer.inl" />
+    <None Include="DescriptorSet.inl" />
     <None Include="GraphicsPipeline.inl" />
+    <None Include="LogicalDevice.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

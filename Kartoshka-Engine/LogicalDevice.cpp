@@ -2,6 +2,7 @@
 #include "ServiceLocator.h"
 #include "PhysicalDevice.h"
 #include "CommandQueue.h"
+#include "Buffer.h"
 
 #include "VkHelpers.h"
 #include "VkConstants.h"
@@ -95,6 +96,7 @@ void krt::LogicalDevice::InitializeDevice()
 
     VkPhysicalDeviceFeatures physicalDeviceFeatures{};
     physicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
+    physicalDeviceFeatures.depthBounds = VK_TRUE;
 
     assert(ValidateExtensionSupport(requiredExtensions));
 
@@ -142,6 +144,25 @@ std::vector<const char*> krt::LogicalDevice::GetRequiredExtensions() const
 #endif
 
     return extensions;
+}
+
+void krt::LogicalDevice::CopyToDeviceMemory(VkDeviceMemory a_DeviceMemory, const void* a_Data, uint64_t a_DataSize)
+{
+    void* mem;
+    vkMapMemory(m_Services.m_LogicalDevice->GetVkDevice(), a_DeviceMemory, 0, a_DataSize, 0, &mem);
+    memcpy(mem, a_Data, a_DataSize);
+    vkUnmapMemory(m_Services.m_LogicalDevice->GetVkDevice(), a_DeviceMemory);
+}
+
+std::vector<uint32_t> krt::LogicalDevice::GetQueueIndices(const std::set<ECommandQueueType>& a_Queues)
+{
+    std::set<uint32_t> indicesSet;
+    for (auto queue : a_Queues)
+    {
+        indicesSet.insert(GetCommandQueue(queue).GetFamilyIndex());
+    }
+
+    return std::vector<uint32_t>(indicesSet.begin(), indicesSet.end());
 }
 
 bool krt::LogicalDevice::CheckValidationLayerSupport() const
@@ -220,5 +241,40 @@ std::vector<VkDeviceQueueCreateInfo> krt::LogicalDevice::GenerateQueueInfos()
         infos.push_back(info);
     }
     return infos;
+}
+
+std::pair<VkBuffer, VkDeviceMemory> krt::LogicalDevice::CreateBufferElements(uint64_t a_Size,
+    VkBufferUsageFlags a_Usage, VkMemoryPropertyFlags a_MemoryProperties,
+    const std::set<ECommandQueueType>& a_QueuesWithAccess)
+{
+    VkBufferCreateInfo bufferInfo = {};
+
+    auto queues = GetQueueIndices(a_QueuesWithAccess);
+
+    VkBuffer vkBuffer;
+    VkDeviceMemory vkDeviceMemory;
+
+    bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = a_Size;
+    bufferInfo.usage = a_Usage;
+    bufferInfo.pQueueFamilyIndices = queues.data();
+    bufferInfo.queueFamilyIndexCount = queues.size() == 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    ThrowIfFailed(vkCreateBuffer(m_VkLogicalDevice, &bufferInfo, m_Services.m_AllocationCallbacks, &vkBuffer));
+
+    auto memoryInfo = m_Services.m_PhysicalDevice->GetMemoryInfoForBuffer(vkBuffer, a_MemoryProperties);
+
+    VkMemoryAllocateInfo alloc = {};
+    alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc.memoryTypeIndex = memoryInfo.m_MemoryType;
+    alloc.allocationSize = memoryInfo.m_Size;
+
+    ThrowIfFailed(vkAllocateMemory(m_VkLogicalDevice, &alloc, m_Services.m_AllocationCallbacks, &vkDeviceMemory));
+    ThrowIfFailed(vkBindBufferMemory(m_VkLogicalDevice, vkBuffer, vkDeviceMemory, 0));
+
+    auto buffer = std::make_pair(vkBuffer, vkDeviceMemory);
+
+    return buffer;
 }
 

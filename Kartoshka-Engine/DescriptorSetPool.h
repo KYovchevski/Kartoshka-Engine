@@ -33,6 +33,7 @@ namespace krt
 
         VkDescriptorSetLayout GetSetLayout() const { return m_VkDescriptorSetLayout; }
 
+        const std::vector<VkDescriptorSetLayoutBinding>& GetDescriptorSetBindings() const { return m_Bindings; }
 
     private:
 
@@ -42,6 +43,7 @@ namespace krt
         uint32_t m_PageCapcity;
 
         std::map<VkDescriptorType, uint32_t> m_BindingsMap;
+        std::vector<VkDescriptorSetLayoutBinding> m_Bindings;
         VkDescriptorSetLayout m_VkDescriptorSetLayout;
     };
 }

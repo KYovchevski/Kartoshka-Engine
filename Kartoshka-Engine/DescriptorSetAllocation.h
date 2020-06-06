@@ -2,6 +2,8 @@
 
 #include "vulkan/vulkan.h"
 
+#include <vector>
+
 namespace krt
 {
     class DescriptorSetPoolPage;
@@ -21,6 +23,8 @@ namespace krt
         DescriptorSetAllocation& operator=(DescriptorSetAllocation&) = delete;
 
         VkDescriptorSet operator*() const;
+
+        std::vector<VkCopyDescriptorSet> GetCopyInfos(VkDescriptorSet a_ToCopyFrom);
 
     private:
         VkDescriptorSet m_VkDescriptorSet;

@@ -20,6 +20,8 @@ namespace krt
     class DescriptorSetPool;
     class Texture;
     class Sampler;
+    class DepthBuffer;
+    class DescriptorSet;
 }
 
 
@@ -66,6 +68,8 @@ namespace krt
         void                InitializeVulkan(const InitializationInfo& a_Info);
         void                SetupDebugMessenger();
 
+        void                CreateDepthBuffer();
+
         void                CreateGraphicsPipeline();
 
         void                CreateRenderPass();
@@ -110,6 +114,11 @@ namespace krt
         std::unique_ptr<VertexBuffer>   m_TexCoords;
         std::unique_ptr<Texture>        m_Texture;
         std::unique_ptr<Sampler>        m_Sampler;
+
+        std::unique_ptr<DepthBuffer>    m_DepthBuffer;
+
+        std::unique_ptr<DescriptorSet>  m_FrontTriangleSet;
+        std::unique_ptr<DescriptorSet>  m_BackTriangleSet;
     };
 
     

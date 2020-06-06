@@ -1,9 +1,9 @@
 #pragma once
 
-#include <map>
 
 #include "vulkan/vulkan.h"
 
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -15,6 +15,7 @@ namespace krt
     class RenderPass;
     class CommandBuffer;
     class DescriptorSetPool;
+    class DescriptorSetAllocation;
 }
 
 namespace krt
@@ -145,10 +146,12 @@ namespace krt
             MultisampleInfo m_MultisampleInfo;
             ColorBlendAttachment m_ColorBlendAttachment;
             ColorBlendInfo m_ColorBlendInfo;
+            DepthStencilInfo m_DepthStencilInfo;
 
             std::vector<VkDynamicState> m_DynamicStates;
             std::vector<VkViewport> m_Viewports;
             std::vector<VkRect2D> m_ScissorRects;
+
 
             RenderPass* m_RenderPass;
             uint32_t m_SubpassIndex;
@@ -158,6 +161,9 @@ namespace krt
         ~GraphicsPipeline();
          
         VkPipeline GetVkPipeline() const { return m_VkPipeline; }
+
+
+        std::unique_ptr<DescriptorSetAllocation> AllocateDescriptorSet(uint32_t a_Slot);
 
     private:
         VkShaderModule CreateShaderModule(std::string a_Filepath);

@@ -3,7 +3,7 @@
 #include "LogicalDevice.h"
 
 krt::VertexBuffer::VertexBuffer(ServiceLocator& a_Services)
-    : m_Services(a_Services)
+    : Buffer(a_Services)
 {
     
 }

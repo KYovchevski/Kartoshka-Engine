@@ -49,6 +49,8 @@ namespace krt
         MemoryInfo GetMemoryInfoForBuffer(VkBuffer a_Buffer, VkMemoryPropertyFlags a_MemProperties);
         MemoryInfo GetMemoryInfoForImage(VkImage a_Image, VkMemoryPropertyFlags a_MemProperties);
 
+        VkFormat FindSupportedFormat(std::vector<VkFormat> a_Candidates, VkImageTiling a_Tiling, VkFormatFeatureFlags a_Features);
+
     private:
         uint32_t FindMemoryType(uint32_t a_MemoryType, VkMemoryPropertyFlags a_Properties);
         static bool IsDeviceSuitable(VkPhysicalDevice a_PhysicalDevice, VkSurfaceKHR a_TargetSurface, std::vector<const char*>& a_ReqExtensions);

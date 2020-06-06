@@ -23,7 +23,7 @@ namespace krt
     {
         struct NextFrameInfo
         {
-            VkFramebuffer m_Framebuffer;
+            VkImageView m_ImageView;
             uint32_t m_FrameIndex;
         };
 
@@ -37,9 +37,8 @@ namespace krt
         Window operator=(Window&&) = delete; // No move assignment
 
         void InitializeSwapchain();
-        void CreateFramebuffers(RenderPass& a_ForwardRenderPass);
 
-        NextFrameInfo GetNextFramebuffer(VkSemaphore a_SemaphoreToSignal, VkFence a_FenceToSignal = VK_NULL_HANDLE);
+        NextFrameInfo GetNextFrameInfo(VkSemaphore a_SemaphoreToSignal, VkFence a_FenceToSignal = VK_NULL_HANDLE);
         void Present(uint32_t a_FrameToPresentIndex, CommandQueue& a_CommandQueue, std::vector<VkSemaphore>& a_SemaphoresToWait);
 
         VkFormat GetRenderSurfaceFormat() const;

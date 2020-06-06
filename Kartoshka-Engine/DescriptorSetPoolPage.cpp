@@ -8,8 +8,9 @@
 
 krt::DescriptorSetPoolPage::DescriptorSetPoolPage(ServiceLocator& a_Services,
     const VkDescriptorSetLayout& a_DescriptorSetLayout, const std::map<VkDescriptorType, uint32_t>& a_PoolSizes,
-    uint32_t a_Capacity)
+    uint32_t a_Capacity, DescriptorSetPool& a_OriginPool)
     : m_Services(a_Services)
+    , m_OriginPool(a_OriginPool)
 {
     auto device = m_Services.m_LogicalDevice->GetVkDevice();
     auto poolSizes = GeneratePoolSizes(a_PoolSizes, a_Capacity);

@@ -10,8 +10,9 @@ krt::Texture::~Texture()
     vkFreeMemory(m_Services.m_LogicalDevice->GetVkDevice(), m_VkDeviceMemory, m_Services.m_AllocationCallbacks);
 }
 
-krt::Texture::Texture(ServiceLocator& a_Services)
+krt::Texture::Texture(ServiceLocator& a_Services, VkFormat a_Format)
     : m_Services(a_Services)
+    , m_Format(a_Format)
 {
 
 }

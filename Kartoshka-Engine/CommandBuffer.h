@@ -12,6 +12,8 @@
 #include <vector>
 #include <map>
 
+#include "Framebuffer.h"
+
 
 namespace krt
 {
@@ -23,6 +25,8 @@ namespace krt
     class DescriptorSetAllocation;
     class Texture;
     class Sampler;
+    class Buffer;
+    class DescriptorSet;
 
     enum ECommandQueueType : uint8_t;
 }
@@ -52,7 +56,7 @@ namespace krt
         void AddSignalSemaphore(VkSemaphore a_Semaphore);
         void SetWaitStages(VkPipelineStageFlags a_WaitStages);
 
-        void BeginRenderPass(RenderPass& a_RenderPass, VkFramebuffer a_FrameBuffer, VkRect2D a_RenderArea, VkSubpassContents a_SubpassContents = VK_SUBPASS_CONTENTS_INLINE);
+        void BeginRenderPass(RenderPass& a_RenderPass, Framebuffer& a_FrameBuffer, VkRect2D a_RenderArea, VkSubpassContents a_SubpassContents = VK_SUBPASS_CONTENTS_INLINE);
         void EndRenderPass();
 
         void SetViewport(const VkViewport& a_Viewport);
@@ -60,6 +64,10 @@ namespace krt
 
         void SetVertexBuffer(VertexBuffer& a_VertexBuffer, uint32_t a_Binding, VkDeviceSize a_Offset = 0);
         void BindPipeline(GraphicsPipeline& a_Pipeline);
+        
+        void SetDescriptorSet(DescriptorSet& a_Set, uint32_t a_Slot);
+        void SetSampler(Sampler& a_Sampler, uint32_t a_Binding, uint32_t a_Set);
+        void SetTexture(Texture& a_Texture, uint32_t a_Binding, uint32_t a_Set);
 
         void Draw(uint32_t a_NumVertices, uint32_t a_NumInstances = 1, uint32_t a_FirstVertex = 0, uint32_t a_FirstInstance = 0);
         void DrawIndexed(uint32_t a_NumIndices, uint32_t a_NumInstances = 1, uint32_t a_FirstIndex = 0, uint32_t a_FirstInstance = 0, uint32_t a_VertexOffset = 0);
@@ -76,14 +84,13 @@ namespace krt
         template<typename DataType>
         void SetUniformBuffer(const DataType& a_Data, uint32_t a_Binding, uint32_t a_Set);
 
-        void SetSampler(Sampler& a_Sampler, uint32_t a_Binding, uint32_t a_Set);
-        void SetTexture(Texture& a_Texture, uint32_t a_Binding, uint32_t a_Set);
-
         template<typename AttributeType>
         std::unique_ptr<VertexBuffer> CreateVertexBuffer(std::vector<AttributeType> a_BufferElements, std::set<ECommandQueueType> a_QueuesWithAccess);
 
+
         VkCommandBuffer GetVkCommandBuffer();
 
+        void BufferCopy(Buffer& a_SourceBuffer, Buffer& a_DestinationBuffer, VkDeviceSize a_Size);
 
     private:
 
@@ -97,21 +104,13 @@ namespace krt
 
         void SetUniformBuffer(const void* a_Data, uint64_t a_DataSize, uint32_t a_Binding, uint32_t a_Set);
 
-        std::pair<VkBuffer, VkDeviceMemory> CreateBufferElements(uint64_t a_Size, VkBufferUsageFlags a_Usage, VkMemoryPropertyFlags a_MemoryProperties,
-            const std::set<ECommandQueueType>& a_QueuesWithAccess);
-
-        void CopyToDeviceMemory(VkDeviceMemory a_DeviceMemory, const void* a_Data, VkDeviceSize a_Size);
-
-        std::vector<uint32_t> GetQueueIndices(const std::set<ECommandQueueType>& a_Queues);
-
         ServiceLocator& m_Services;
 
         VkCommandBuffer m_VkCommandBuffer;
 
         CommandQueue& m_CommandQueue;
 
-        std::vector<VkBuffer> m_IntermediateBuffers;
-        std::vector<VkDeviceMemory> m_IntermediateBufferMemoryAllocations;
+        std::vector<std::unique_ptr<Buffer>> m_IntermediateBuffers;
         std::vector<std::unique_ptr<DescriptorSetAllocation>> m_IntermediateDescriptorSetAllocations;
 
         std::set<VkSemaphore> m_WaitSemaphores;
@@ -129,6 +128,7 @@ namespace krt
         };
 
         std::map<uint32_t, std::vector<DescriptorUpdate>>  m_PendingDescriptorUpdates;
+        std::map<uint32_t, VkDescriptorSet> m_CurrentlyBoundDescriptorSets;
 
         bool m_HasBegun;
     };

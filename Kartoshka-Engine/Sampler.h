@@ -32,6 +32,8 @@ namespace krt
         Sampler(ServiceLocator& a_Services, CreateInfo a_CreateInfo);
         ~Sampler();
 
+        VkSampler operator*() const { return m_VkSampler; }
+
     private:
         ServiceLocator& m_Services;
 
