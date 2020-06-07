@@ -22,6 +22,7 @@ namespace krt
     class Sampler;
     class DepthBuffer;
     class DescriptorSet;
+    class IndexBuffer;
 }
 
 
@@ -112,6 +113,7 @@ namespace krt
 
         std::unique_ptr<VertexBuffer>   m_TriangleVertexBuffer;
         std::unique_ptr<VertexBuffer>   m_TexCoords;
+        std::unique_ptr<IndexBuffer>    m_Indices;
         std::unique_ptr<Texture>        m_Texture;
         std::unique_ptr<Sampler>        m_Sampler;
 

@@ -10,6 +10,7 @@ namespace krt
 {
     struct ServiceLocator;
     class Application;
+    class Framebuffer;
 }
 
 namespace krt
@@ -31,6 +32,8 @@ namespace krt
 
         RenderPass(ServiceLocator& a_Services, CreateInfo a_CreateInfo);
         ~RenderPass();
+
+        std::unique_ptr<Framebuffer> CreateFramebuffer();
 
 
         VkRenderPass GetVkRenderPass(); 

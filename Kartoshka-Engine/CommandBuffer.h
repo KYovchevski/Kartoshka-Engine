@@ -27,6 +27,7 @@ namespace krt
     class Sampler;
     class Buffer;
     class DescriptorSet;
+    class IndexBuffer;
 
     enum ECommandQueueType : uint8_t;
 }
@@ -63,6 +64,7 @@ namespace krt
         void SetScissorRect(const VkRect2D& a_Scissor);
 
         void SetVertexBuffer(VertexBuffer& a_VertexBuffer, uint32_t a_Binding, VkDeviceSize a_Offset = 0);
+        void SetIndexBuffer(IndexBuffer& a_IndexBuffer, uint32_t a_Offset = 0);
         void BindPipeline(GraphicsPipeline& a_Pipeline);
         
         void SetDescriptorSet(DescriptorSet& a_Set, uint32_t a_Slot);
@@ -87,6 +89,9 @@ namespace krt
         template<typename AttributeType>
         std::unique_ptr<VertexBuffer> CreateVertexBuffer(std::vector<AttributeType> a_BufferElements, std::set<ECommandQueueType> a_QueuesWithAccess);
 
+        template<typename IndexType>
+        std::unique_ptr<IndexBuffer> CreateIndexBuffer(std::vector<IndexType> a_Indices, std::set<ECommandQueueType> a_QueuesWithAccess);
+
 
         VkCommandBuffer GetVkCommandBuffer();
 
@@ -101,6 +106,9 @@ namespace krt
 
         std::unique_ptr<VertexBuffer> CreateVertexBuffer(void* a_BufferData, uint64_t a_NumElements,
             uint64_t a_ElementSize, std::set<ECommandQueueType> a_QueuesWithAccess);
+
+        std::unique_ptr<IndexBuffer> CreateIndexBuffer(void* a_IndexData, uint64_t a_NumElements,
+            uint8_t a_ElementSize, std::set<ECommandQueueType> a_QueuesWithAccess);
 
         void SetUniformBuffer(const void* a_Data, uint64_t a_DataSize, uint32_t a_Binding, uint32_t a_Set);
 

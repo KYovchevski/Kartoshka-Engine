@@ -12,6 +12,7 @@
 #include "Texture.h"
 #include "Sampler.h"
 #include "DescriptorSet.h"
+#include "IndexBuffer.h"
 
 #include "stb/stb_image.h"
 
@@ -132,6 +133,11 @@ void krt::CommandBuffer::SetScissorRect(const VkRect2D& a_Scissor)
 void krt::CommandBuffer::SetVertexBuffer(VertexBuffer& a_VertexBuffer, uint32_t a_Binding, VkDeviceSize a_Offset)
 {
     vkCmdBindVertexBuffers(m_VkCommandBuffer, a_Binding, 1, &a_VertexBuffer.m_VkBuffer, &a_Offset);
+}
+
+void krt::CommandBuffer::SetIndexBuffer(IndexBuffer& a_IndexBuffer, uint32_t a_Offset)
+{
+    vkCmdBindIndexBuffer(m_VkCommandBuffer, a_IndexBuffer.m_VkBuffer, a_Offset, a_IndexBuffer.m_IndexType);
 }
 
 void krt::CommandBuffer::BindPipeline(GraphicsPipeline& a_Pipeline)
@@ -396,6 +402,39 @@ std::unique_ptr<krt::VertexBuffer> krt::CommandBuffer::CreateVertexBuffer(void* 
     m_IntermediateBuffers.push_back(std::move(staging));
 
     return local;
+}
+
+std::unique_ptr<krt::IndexBuffer> krt::CommandBuffer::CreateIndexBuffer(void* a_IndexData, uint64_t a_NumElements,
+    uint8_t a_ElementSize, std::set<ECommandQueueType> a_QueuesWithAccess)
+{
+    uint64_t bufferSize = a_ElementSize * a_NumElements;
+    auto staging = m_Services.m_LogicalDevice->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, {ETransferQueue});
+    auto local = m_Services.m_LogicalDevice->CreateBuffer<IndexBuffer>(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, a_QueuesWithAccess);
+
+    local->m_NumElements = static_cast<uint32_t>(a_NumElements);
+
+    switch (a_ElementSize)
+    {
+    case 2:
+        local->m_IndexType = VK_INDEX_TYPE_UINT16;
+        break;
+    case 4:
+        local->m_IndexType = VK_INDEX_TYPE_UINT16;
+        break;
+    default:
+        printf("Unknown Index buffer index type with size %d\n", a_ElementSize);
+        abort();
+    }
+
+    m_Services.m_LogicalDevice->CopyToDeviceMemory(staging->m_VkDeviceMemory, a_IndexData, bufferSize);
+
+    BufferCopy(*staging, *local, bufferSize);
+
+    m_IntermediateBuffers.push_back(std::move(staging));
+
+    return std::move(local);
 }
 
 void krt::CommandBuffer::BufferCopy(Buffer& a_SourceBuffer, Buffer& a_DestinationBuffer, VkDeviceSize a_Size)

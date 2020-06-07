@@ -141,7 +141,7 @@ bool krt::PhysicalDevice::IsDeviceSuitable(VkPhysicalDevice a_PhysicalDevice, Vk
     VkPhysicalDeviceFeatures features;
     vkGetPhysicalDeviceFeatures(a_PhysicalDevice, &features);
 
-    return indices.IsComplete() && extensionsSupported && swapChainSupported && features.samplerAnisotropy == VK_TRUE;
+    return indices.IsComplete() && extensionsSupported && swapChainSupported && features.samplerAnisotropy == VK_TRUE && features.depthBounds == VK_TRUE;
 }
 
 krt::QueueFamilyIndices krt::PhysicalDevice::GetQueueFamilyIndicesForDevice(VkPhysicalDevice a_Device, VkSurfaceKHR a_TargetSurface)

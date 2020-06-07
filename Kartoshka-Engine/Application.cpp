@@ -13,6 +13,7 @@
 #include "DepthBuffer.h"
 #include "Framebuffer.h"
 #include "DescriptorSet.h"
+#include "IndexBuffer.h"
 
 
 #include "VkHelpers.h"
@@ -164,6 +165,7 @@ void krt::Application::CreateDepthBuffer()
 
 void krt::Application::CreateGraphicsPipeline()
 {
+    printf("Creating graphics pipeline.\n");
     glm::uvec2 screenSize = m_Window->GetScreenSize();
 
     auto colorAttachment = ColorBlendAttachment::CreateDefault();
@@ -191,6 +193,8 @@ void krt::Application::CreateGraphicsPipeline()
 
 
     m_GraphicsPipeline = std::make_unique<GraphicsPipeline>(*m_ServiceLocator, pipelineInfo);
+
+    printf("Graphics pipeline created successfully.\n");
 }
 
 void krt::Application::CreateRenderPass()
@@ -280,36 +284,50 @@ void krt::Application::CreateSemaphores()
 
 void krt::Application::LoadAssets()
 {
-    
+    printf("Loading assets\n");
 
     std::vector<glm::vec3> positions = 
     {
         {0.0f, 0.5f, 0.0f},
-        {0.5f, -0.25f, 0.0f},
-        {-0.5f, -0.25f, 0.0f}
+        {0.5f, -0.0f, 0.0f},
+        {-0.5f, -0.0f, 0.0f},
+        {0.0f, -1.0f, 0.0f}
+    };
+
+    std::vector<uint16_t> indices =
+    {
+        0, 2, 1,
+        1, 2, 3
     };
 
     std::vector<glm::vec2> tex =
     {
         {0.0f, 0.0f},
         {1.0f, 0.0f},
-        {0.0f, 1.0f}
+        {0.0f, 1.0f},
+        {1.0f, 1.0f}
     };
 
     auto& transferQueue = m_LogicalDevice->GetCommandQueue(ETransferQueue);
     auto& commandBuffer = transferQueue.GetSingleUseCommandBuffer();
 
 
+    printf("Creating vertex buffers.\n");
     commandBuffer.Begin();
     m_TriangleVertexBuffer = commandBuffer.CreateVertexBuffer(positions, { EGraphicsQueue });
     m_TexCoords = commandBuffer.CreateVertexBuffer(tex, { EGraphicsQueue });
 
+    printf("Creating index buffer.\n");
+    m_Indices = commandBuffer.CreateIndexBuffer(indices, { EGraphicsQueue });
+
+    printf("Loading test texture.\n");
     m_Texture = commandBuffer.CreateTextureFromFile("../../../../Assets/Textures/debugTex.png", {EGraphicsQueue});
     auto samplerInfo = Sampler::CreateInfo::CreateDefault();
     m_Sampler = std::make_unique<Sampler>(*m_ServiceLocator, samplerInfo);
 
-    glm::vec3 v = { 0.0f, 0.0f, 0.0f };
     commandBuffer.Submit();
+    printf("Baking descriptor sets.\n");
+    glm::vec3 v = { 0.0f, 0.0f, 0.0f };
     std::set<ECommandQueueType> queues = {EGraphicsQueue};
     m_FrontTriangleSet = std::make_unique<DescriptorSet>(*m_ServiceLocator, *m_GraphicsPipeline, 0u, queues);
     m_FrontTriangleSet->SetUniformBuffer(v, 0);
@@ -324,6 +342,7 @@ void krt::Application::LoadAssets()
     m_BackTriangleSet->SetTexture(*m_Texture, 2);
 
     transferQueue.Flush();
+    printf("All assets loaded.\n");
 }
 
 void krt::Application::DrawFrame()
@@ -360,6 +379,7 @@ void krt::Application::DrawFrame()
 
     commandBuffer.SetVertexBuffer(*m_TexCoords, 0);
     commandBuffer.SetVertexBuffer(*m_TriangleVertexBuffer, 1);
+    commandBuffer.SetIndexBuffer(*m_Indices);
 
     static float time = 0.0f;
     time += 1.0f / 60.0f;
@@ -372,7 +392,7 @@ void krt::Application::DrawFrame()
 
     commandBuffer.SetDescriptorSet(*m_FrontTriangleSet, 0);
 
-    commandBuffer.Draw(m_TriangleVertexBuffer->GetElementCount());
+    commandBuffer.DrawIndexed(6);
 
     offset = glm::vec3(-std::sin(time / 10.0f) / 2.0f, 0.0f, 0.2f);
 
@@ -382,7 +402,7 @@ void krt::Application::DrawFrame()
 
     commandBuffer.SetDescriptorSet(*m_BackTriangleSet, 0);
 
-    commandBuffer.Draw(m_TriangleVertexBuffer->GetElementCount());
+    commandBuffer.DrawIndexed(m_Indices->GetElementCount());
 
     commandBuffer.EndRenderPass();
     commandBuffer.AddSignalSemaphore(m_RenderFinishedSemaphore);

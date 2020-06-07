@@ -21,7 +21,7 @@ VS_Output main(VS_Input a_Input)
     output.m_Position = float4(a_Input.m_Position + Offset, 1.0f);
     output.m_TexCoords = a_Input.m_TexCoords;
 
-    output.m_Position *= float4(1.0f, -1.0f, 1.0f, 1.0f);
+    //output.m_Position *= float4(1.0f, -1.0f, 1.0f, 1.0f);
 	
     return output;
 }
