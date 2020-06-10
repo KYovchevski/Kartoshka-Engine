@@ -52,6 +52,8 @@ namespace glm
 #			endif
 #		endif
 
+#pragma warning (push)
+#pragma warning (disable: 4201)
 #		if GLM_LANG & GLM_LANG_CXXMS_FLAG
 			union
 			{
@@ -62,6 +64,8 @@ namespace glm
 #		else
 			T x, y, z, w;
 #		endif
+
+#pragma warning (pop)
 
 #		if GLM_SILENT_WARNINGS == GLM_ENABLE
 #			if GLM_COMPILER & GLM_COMPILER_CLANG

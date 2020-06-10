@@ -1,6 +1,7 @@
 #include "../trigonometric.hpp"
 #include "../exponential.hpp"
 #include "../ext/quaternion_geometric.hpp"
+#include "../gtx/quaternion.hpp"
 #include <limits>
 
 namespace glm{
@@ -323,7 +324,7 @@ namespace detail
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER vec<3, T, Q> operator*(vec<3, T, Q> const& v, qua<T, Q> const& q)
 	{
-		return glm::inverse(q) * v;
+        return glm::inverse(q) * v;
 	}
 
 	template<typename T, qualifier Q>
