@@ -92,6 +92,9 @@ namespace krt
         template<typename IndexType>
         std::unique_ptr<IndexBuffer> CreateIndexBuffer(std::vector<IndexType> a_Indices, std::set<ECommandQueueType> a_QueuesWithAccess);
 
+        template<typename UniformType>
+        void PushConstant(const UniformType& a_Uniform, uint32_t a_Slot);
+
 
         VkCommandBuffer GetVkCommandBuffer();
 
@@ -111,6 +114,8 @@ namespace krt
             uint8_t a_ElementSize, std::set<ECommandQueueType> a_QueuesWithAccess);
 
         void SetUniformBuffer(const void* a_Data, uint64_t a_DataSize, uint32_t a_Binding, uint32_t a_Set);
+
+        void PushConstant(const void* a_Data, uint32_t a_DataSize, uint32_t a_Slot);
 
         ServiceLocator& m_Services;
 

@@ -19,3 +19,10 @@ void CommandBuffer::SetUniformBuffer(const DataType& a_Data, uint32_t a_Binding,
 {
     SetUniformBuffer(&a_Data, sizeof(DataType), a_Binding, a_Set);
 }
+
+template <typename UniformType>
+void CommandBuffer::PushConstant(const UniformType& a_Uniform, uint32_t a_Slot)
+{
+    PushConstant(&a_Uniform, static_cast<uint32_t>(sizeof(UniformType)), a_Slot);
+}
+

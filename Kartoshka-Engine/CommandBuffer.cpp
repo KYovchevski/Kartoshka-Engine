@@ -465,3 +465,10 @@ void krt::CommandBuffer::SetUniformBuffer(const void* a_Data, uint64_t a_DataSiz
     update.m_DescriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
 }
+
+void krt::CommandBuffer::PushConstant(const void* a_Data, uint32_t a_DataSize, uint32_t a_Slot)
+{
+    auto constant = m_CurrentGraphicsPipeline->m_PushConstants[a_Slot];
+    assert(a_DataSize == constant.size);
+    vkCmdPushConstants(m_VkCommandBuffer, m_CurrentGraphicsPipeline->m_VkPipelineLayout, constant.stageFlags, constant.offset, constant.size, a_Data);
+}

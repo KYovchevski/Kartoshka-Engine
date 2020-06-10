@@ -26,6 +26,7 @@
 *.a
 *.lib
 
+
 # Executables
 *.exe
 *.out
@@ -33,6 +34,9 @@
 
 #Visual studio folder
 .vs
+
 # Build folder
 Build
 *.spv
+
+!Tools/*

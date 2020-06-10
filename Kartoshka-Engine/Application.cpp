@@ -15,6 +15,7 @@
 #include "DescriptorSet.h"
 #include "IndexBuffer.h"
 
+#include "glm/glm.hpp"
 
 #include "VkHelpers.h"
 #include "glm/vec3.hpp"
@@ -170,9 +171,10 @@ void krt::Application::CreateGraphicsPipeline()
 
     auto colorAttachment = ColorBlendAttachment::CreateDefault();
 
+
     GraphicsPipeline::CreateInfo pipelineInfo;
-    pipelineInfo.m_FragmentShaderFilepath = "../../../SpirV/BasePixelShader.spv";
-    pipelineInfo.m_VertexShaderFilepath = "../../../SpirV/BaseVertexShader.spv";
+    pipelineInfo.m_FragmentShaderFilepath = "../../../SpirV/Fragment.spv";
+    pipelineInfo.m_VertexShaderFilepath = "../../../SpirV/Vertex.spv";
     pipelineInfo.m_DynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
     pipelineInfo.m_DynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR);
     pipelineInfo.m_Viewports.push_back({ 0.0f, 0.0f, static_cast<float>(screenSize.x), static_cast<float>(screenSize.y), 0.0f, 1.0f });
@@ -183,6 +185,9 @@ void krt::Application::CreateGraphicsPipeline()
 
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec2>(0, 0, VK_FORMAT_R32G32_SFLOAT); // Tex Coords
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(1, 1, VK_FORMAT_R32G32B32_SFLOAT); // Positions
+
+    pipelineInfo.m_PipelineLayout.AddPushConstantRange<glm::vec4>(VK_SHADER_STAGE_VERTEX_BIT);
+    //pipelineInfo.m_PipelineLayout.AddPushConstantRange<glm::vec3>(VK_SHADER_STAGE_FRAGMENT_BIT);
 
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 0, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
@@ -291,7 +296,7 @@ void krt::Application::LoadAssets()
         {0.0f, 0.5f, 0.0f},
         {0.5f, -0.0f, 0.0f},
         {-0.5f, -0.0f, 0.0f},
-        {0.0f, -1.0f, 0.0f}
+        {0.0f, -0.5f, 0.0f}
     };
 
     std::vector<uint16_t> indices =
@@ -384,24 +389,26 @@ void krt::Application::DrawFrame()
     static float time = 0.0f;
     time += 1.0f / 60.0f;
 
-    glm::vec3 offset = glm::vec3(std::sin(time / 10.0f) / 2.0f, 0.0f, 0.3f);
+    glm::vec4 offset = glm::vec4(std::sin(time / 10.0f) / 2.0f, 0.0f, 0.8f, 1.0f);
     
     //commandBuffer.SetUniformBuffer(offset,0, 0);
     //commandBuffer.SetSampler(*m_Sampler, 1, 0);
     //commandBuffer.SetTexture(*m_Texture, 2, 0);
 
     commandBuffer.SetDescriptorSet(*m_FrontTriangleSet, 0);
+    commandBuffer.PushConstant(offset, 0);
 
     commandBuffer.DrawIndexed(6);
 
-    offset = glm::vec3(-std::sin(time / 10.0f) / 2.0f, 0.0f, 0.2f);
+    offset = glm::vec4(-std::sin(time / 10.0f) / 2.0f, 0.0f, 0.5f, 1.0f);
 
     //commandBuffer.SetUniformBuffer(offset, 0, 0);
     //commandBuffer.SetSampler(*m_Sampler, 1, 0);
     //commandBuffer.SetTexture(*m_Texture, 2, 0);
 
+    commandBuffer.PushConstant(offset, 0);
     commandBuffer.SetDescriptorSet(*m_BackTriangleSet, 0);
-
+    //vkCmdPushConstants(commandBuffer.GetVkCommandBuffer(), m_GraphicsPipeline->GetVkPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, 12, &offset);
     commandBuffer.DrawIndexed(m_Indices->GetElementCount());
 
     commandBuffer.EndRenderPass();

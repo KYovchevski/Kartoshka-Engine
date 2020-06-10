@@ -121,11 +121,15 @@ namespace krt
     public:
         void AddLayoutBinding(uint32_t a_Set, uint32_t a_Binding, VkShaderStageFlags a_ShaderStage, VkDescriptorType a_Type, uint32_t a_Count = 1);
 
+        template<typename Type>
+        void AddPushConstantRange(VkShaderStageFlags a_ShaderStage);
+
         std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>& GetDescriptorSetLayouts();
+        std::map<uint32_t, VkPushConstantRange>& GetPushConstantRanges();
 
     private:
-        //       set index
         std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> m_LayoutBindings;
+        std::map<uint32_t, VkPushConstantRange> m_PushConstantRanges;
     };
 
     class GraphicsPipeline
@@ -161,6 +165,7 @@ namespace krt
         ~GraphicsPipeline();
          
         VkPipeline GetVkPipeline() const { return m_VkPipeline; }
+        VkPipelineLayout GetVkPipelineLayout() const { return m_VkPipelineLayout; }
 
 
         std::unique_ptr<DescriptorSetAllocation> AllocateDescriptorSet(uint32_t a_Slot);
@@ -178,6 +183,8 @@ namespace krt
         VkPipeline m_VkPipeline;
 
         std::map<uint32_t, std::unique_ptr<DescriptorSetPool>> m_DescriptorSetPools;
+
+        std::map<uint32_t, VkPushConstantRange> m_PushConstants;
     };
 
 #include "GraphicsPipeline.inl"

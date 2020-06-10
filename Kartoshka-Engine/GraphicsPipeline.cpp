@@ -194,6 +194,11 @@ std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>& krt::PipelineLayo
     return m_LayoutBindings;
 }
 
+std::map<uint32_t, VkPushConstantRange>& krt::PipelineLayoutInfo::GetPushConstantRanges()
+{
+    return m_PushConstantRanges;
+}
+
 krt::GraphicsPipeline::CreateInfo::CreateInfo()
     : m_VertexShaderFilepath("")
     , m_FragmentShaderFilepath("")
@@ -250,10 +255,16 @@ krt::GraphicsPipeline::GraphicsPipeline(ServiceLocator& a_Services, CreateInfo& 
     CreateDescriptorSetPools(a_CreateInfo.m_PipelineLayout.GetDescriptorSetLayouts());
     auto descriptorSets = GetDescriptorLayouts();
 
+    std::vector<VkPushConstantRange> pushConstants;
+    m_PushConstants = a_CreateInfo.m_PipelineLayout.GetPushConstantRanges();
+    for (auto& pushConstant : m_PushConstants)
+    {
+        pushConstants.emplace_back(pushConstant.second);
+    }
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.pPushConstantRanges = nullptr;
-    layoutInfo.pushConstantRangeCount = 0;
+    layoutInfo.pPushConstantRanges = pushConstants.data();
+    layoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstants.size());
     layoutInfo.pSetLayouts = descriptorSets.data();
     layoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSets.size());
 

@@ -47,4 +47,26 @@ void krt::VertexInputInfo::AddPerInstanceAttribute(uint32_t a_Binding, uint32_t 
     binding.stride += sizeof(AttributeType);
 }
 
+template <typename Type>
+void PipelineLayoutInfo::AddPushConstantRange(VkShaderStageFlags a_ShaderStage)
+{
+    VkPushConstantRange range;
+
+    if (m_PushConstantRanges.empty())
+    {
+        range.offset = 0;
+    }
+    else
+    {
+        auto& previous = m_PushConstantRanges[static_cast<uint32_t>(m_PushConstantRanges.size()) - 1];
+        range.offset = previous.size + previous.offset;
+    }
+
+    auto size = static_cast<uint32_t>(sizeof(Type));
+    range.size = static_cast<uint32_t>(std::ceil(static_cast<float>(size) / 4.0f) * 4.0f);
+    range.stageFlags = a_ShaderStage;
+
+    m_PushConstantRanges.emplace(static_cast<uint32_t>(m_PushConstantRanges.size()), range);
+}
+
 
