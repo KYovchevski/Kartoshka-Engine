@@ -101,10 +101,15 @@ const glm::vec3& krt::Transform::GetScale() const
     return m_Scale;
 }
 
-krt::Transform::operator glm::mat<4, 4, float, glm::defaultp>() const
+glm::mat4 krt::Transform::GetTransformationMatrix() const
 {
     UpdateMatrix();
     return m_TransformationMatrix;
+}
+
+krt::Transform::operator glm::mat<4, 4, float, glm::defaultp>() const
+{
+    return GetTransformationMatrix();
 }
 
 void krt::Transform::MakeDirty()

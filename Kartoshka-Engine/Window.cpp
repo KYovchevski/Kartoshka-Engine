@@ -129,6 +129,11 @@ glm::uvec2 krt::Window::GetScreenSize() const
     return m_ScreenSize;
 }
 
+float krt::Window::GetAspectRatio() const
+{
+    return static_cast<float>(m_ScreenSize.x) / static_cast<float>(m_ScreenSize.y);
+}
+
 std::string krt::Window::GetWindowTitle() const
 {
     return m_WindowTitle;

@@ -101,7 +101,7 @@ VkFormat krt::hlp::PickTextureFormat(uint8_t a_NumChannels)
     case 3:
         return VK_FORMAT_R8G8B8_SRGB;
     case 4:
-        return VK_FORMAT_R8G8B8A8_SRGB;
+        return VK_FORMAT_R8G8B8A8_UNORM;
     }
 
     abort();

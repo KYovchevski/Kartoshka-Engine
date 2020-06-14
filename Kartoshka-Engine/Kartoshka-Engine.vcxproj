@@ -97,7 +97,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)/Dependencies/Include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLM_FORCE_LEFT_HANDED;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,6 +131,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)/Dependencies/Include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>GLM_FORCE_LEFT_HANDED;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -156,6 +157,8 @@
     <ClCompile Include="IndexBuffer.cpp" />
     <ClCompile Include="LogicalDevice.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="ModelManager.cpp" />
     <ClCompile Include="PhysicalDevice.cpp" />
     <ClCompile Include="RenderPass.cpp" />
     <ClCompile Include="Sampler.cpp" />
@@ -181,6 +184,8 @@
     <ClInclude Include="GraphicsPipeline.h" />
     <ClInclude Include="IndexBuffer.h" />
     <ClInclude Include="LogicalDevice.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="ModelManager.h" />
     <ClInclude Include="PhysicalDevice.h" />
     <ClInclude Include="RenderPass.h" />
     <ClInclude Include="Sampler.h" />
@@ -197,6 +202,7 @@
     <None Include="DescriptorSet.inl" />
     <None Include="GraphicsPipeline.inl" />
     <None Include="LogicalDevice.inl" />
+    <None Include="ModelManager.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

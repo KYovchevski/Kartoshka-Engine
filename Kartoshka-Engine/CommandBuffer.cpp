@@ -13,6 +13,7 @@
 #include "Sampler.h"
 #include "DescriptorSet.h"
 #include "IndexBuffer.h"
+#include "Mesh.h"
 
 #include "stb/stb_image.h"
 
@@ -147,7 +148,7 @@ void krt::CommandBuffer::BindPipeline(GraphicsPipeline& a_Pipeline)
     m_CurrentlyBoundDescriptorSets.clear();
 }
 
-void krt::CommandBuffer::SetDescriptorSet(DescriptorSet& a_Set, uint32_t a_Slot)
+void krt::CommandBuffer::SetDescriptorSet(const krt::DescriptorSet& a_Set, uint32_t a_Slot)
 {
     auto vkSet = *a_Set;
     vkCmdBindDescriptorSets(m_VkCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_CurrentGraphicsPipeline->m_VkPipelineLayout, a_Slot,
@@ -194,7 +195,6 @@ std::unique_ptr<krt::Texture> krt::CommandBuffer::CreateTexture(void* a_Data, gl
     VkFormat imageFormat = hlp::PickTextureFormat(a_NumChannels);
 
     uint64_t sizeInBytes = a_Dimensions.x * a_Dimensions.y * a_NumChannels * a_BytesPerChannel;
-    sizeInBytes;
     std::unique_ptr<Texture> texture = std::make_unique<Texture>(m_Services, imageFormat);
 
     VkExtent3D extent;
@@ -295,6 +295,12 @@ void krt::CommandBuffer::SetTexture(Texture& a_Texture, uint32_t a_Binding, uint
     update.m_ImageUpdate.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     update.m_TargetBinding = a_Binding;
     update.m_DescriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+}
+
+void krt::CommandBuffer::SetMaterial(Material& a_Material, uint32_t a_Set)
+{
+    auto& descriptorSet = a_Material.GetDescriptorSet(*m_CurrentGraphicsPipeline, a_Set);
+    SetDescriptorSet(descriptorSet, a_Set);
 }
 
 VkCommandBuffer krt::CommandBuffer::GetVkCommandBuffer()

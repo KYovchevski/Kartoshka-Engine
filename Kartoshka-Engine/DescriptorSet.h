@@ -33,7 +33,9 @@ namespace krt
         void SetSampler(const Sampler& a_Sampler, uint32_t a_Binding);
         void SetTexture(const Texture& a_Texture, uint32_t a_Binding);
 
-        VkDescriptorSet operator*();
+        GraphicsPipeline* GetGraphicsPipeline() const { return m_GraphicsPipeline; };
+
+        VkDescriptorSet operator*() const;
 
     private:
 

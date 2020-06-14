@@ -14,6 +14,7 @@ namespace krt
     struct ServiceLocator;
     class LogicalDevice;
     class PhysicalDevice;
+    class ModelManager;
     class RenderPass;
     class GraphicsPipeline;
     class VertexBuffer;
@@ -23,6 +24,11 @@ namespace krt
     class DepthBuffer;
     class DescriptorSet;
     class IndexBuffer;
+    class Material;
+    struct Mesh;
+
+    class Camera;
+    class Transform;
 }
 
 
@@ -108,19 +114,29 @@ namespace krt
         std::unique_ptr<PhysicalDevice> m_PhysicalDevice;
         std::unique_ptr<LogicalDevice>  m_LogicalDevice;
 
+        std::unique_ptr<ModelManager>   m_ModelManager;
+
         std::unique_ptr<RenderPass>     m_ForwardRenderPass;
         std::unique_ptr<GraphicsPipeline> m_GraphicsPipeline;
 
         std::unique_ptr<VertexBuffer>   m_TriangleVertexBuffer;
         std::unique_ptr<VertexBuffer>   m_TexCoords;
         std::unique_ptr<IndexBuffer>    m_Indices;
-        std::unique_ptr<Texture>        m_Texture;
+
         std::unique_ptr<Sampler>        m_Sampler;
+        std::unique_ptr<Texture>        m_Texture;
+
+        std::unique_ptr<Material>       m_Mat;
 
         std::unique_ptr<DepthBuffer>    m_DepthBuffer;
 
         std::unique_ptr<DescriptorSet>  m_FrontTriangleSet;
         std::unique_ptr<DescriptorSet>  m_BackTriangleSet;
+
+        std::unique_ptr<Camera>         m_Camera;
+        std::unique_ptr<Transform>      m_Transform;
+
+        Mesh*                           m_Duccc;
     };
 
     

@@ -1,14 +1,13 @@
 #pragma once
 
-#include <map>
-#include <memory>
+#include "vulkan/vulkan.h"
 
 namespace krt
 {
     class Window;
     class PhysicalDevice;
     class LogicalDevice;
-    class DescriptorSetPool;
+    class ModelManager;
 }
 
 namespace krt
@@ -20,6 +19,7 @@ namespace krt
         Window* m_Window;
         PhysicalDevice* m_PhysicalDevice;
         LogicalDevice* m_LogicalDevice;
+        ModelManager* m_ModelManager;
     };
 
 }

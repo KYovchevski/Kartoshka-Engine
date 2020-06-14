@@ -28,6 +28,7 @@ namespace krt
     class Buffer;
     class DescriptorSet;
     class IndexBuffer;
+    class Material;
 
     enum ECommandQueueType : uint8_t;
 }
@@ -67,9 +68,11 @@ namespace krt
         void SetIndexBuffer(IndexBuffer& a_IndexBuffer, uint32_t a_Offset = 0);
         void BindPipeline(GraphicsPipeline& a_Pipeline);
         
-        void SetDescriptorSet(DescriptorSet& a_Set, uint32_t a_Slot);
+        void SetDescriptorSet(const DescriptorSet& a_Set, uint32_t a_Slot);
         void SetSampler(Sampler& a_Sampler, uint32_t a_Binding, uint32_t a_Set);
         void SetTexture(Texture& a_Texture, uint32_t a_Binding, uint32_t a_Set);
+
+        void SetMaterial(Material& a_Material, uint32_t a_Set);
 
         void Draw(uint32_t a_NumVertices, uint32_t a_NumInstances = 1, uint32_t a_FirstVertex = 0, uint32_t a_FirstInstance = 0);
         void DrawIndexed(uint32_t a_NumIndices, uint32_t a_NumInstances = 1, uint32_t a_FirstIndex = 0, uint32_t a_FirstInstance = 0, uint32_t a_VertexOffset = 0);
@@ -88,9 +91,13 @@ namespace krt
 
         template<typename AttributeType>
         std::unique_ptr<VertexBuffer> CreateVertexBuffer(std::vector<AttributeType> a_BufferElements, std::set<ECommandQueueType> a_QueuesWithAccess);
+        std::unique_ptr<VertexBuffer> CreateVertexBuffer(void* a_BufferData, uint64_t a_NumElements,
+            uint64_t a_ElementSize, std::set<ECommandQueueType> a_QueuesWithAccess);
 
         template<typename IndexType>
         std::unique_ptr<IndexBuffer> CreateIndexBuffer(std::vector<IndexType> a_Indices, std::set<ECommandQueueType> a_QueuesWithAccess);
+        std::unique_ptr<IndexBuffer> CreateIndexBuffer(void* a_IndexData, uint64_t a_NumElements,
+            uint8_t a_ElementSize, std::set<ECommandQueueType> a_QueuesWithAccess);
 
         template<typename UniformType>
         void PushConstant(const UniformType& a_Uniform, uint32_t a_Slot);
@@ -107,11 +114,7 @@ namespace krt
         void TransitionImageLayout(VkImage a_VkImage, VkImageLayout a_OldLayout, VkImageLayout a_NewLayout, VkAccessFlags a_SrcAccessMask, VkAccessFlags
                                    a_DstAccessMask, VkPipelineStageFlags a_SrcStageMask, VkPipelineStageFlags a_DstStageMask);
 
-        std::unique_ptr<VertexBuffer> CreateVertexBuffer(void* a_BufferData, uint64_t a_NumElements,
-            uint64_t a_ElementSize, std::set<ECommandQueueType> a_QueuesWithAccess);
 
-        std::unique_ptr<IndexBuffer> CreateIndexBuffer(void* a_IndexData, uint64_t a_NumElements,
-            uint8_t a_ElementSize, std::set<ECommandQueueType> a_QueuesWithAccess);
 
         void SetUniformBuffer(const void* a_Data, uint64_t a_DataSize, uint32_t a_Binding, uint32_t a_Set);
 

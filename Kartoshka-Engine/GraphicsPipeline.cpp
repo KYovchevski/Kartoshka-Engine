@@ -5,6 +5,7 @@
 #include "RenderPass.h"
 #include "DescriptorSetPool.h"
 #include "DescriptorSetAllocation.h"
+#include "DescriptorSet.h"
 
 #include "VkHelpers.h"
 
@@ -310,6 +311,11 @@ krt::GraphicsPipeline::~GraphicsPipeline()
 std::unique_ptr<krt::DescriptorSetAllocation> krt::GraphicsPipeline::AllocateDescriptorSet(uint32_t a_Slot)
 {
     return m_DescriptorSetPools[a_Slot]->GetDescriptorSet();
+}
+
+std::unique_ptr<krt::DescriptorSet> krt::GraphicsPipeline::CreateDescriptorSet(uint32_t a_Slot, std::set<ECommandQueueType> a_QueuesWithAccess)
+{
+    return std::make_unique<DescriptorSet>(m_Services, *this, a_Slot, a_QueuesWithAccess);
 }
 
 VkShaderModule krt::GraphicsPipeline::CreateShaderModule(std::string a_Filepath)

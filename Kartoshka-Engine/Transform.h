@@ -32,6 +32,8 @@ namespace krt
         glm::vec3 GetRotationEuler() const;
         const glm::vec3& GetScale() const;
 
+        glm::mat4 GetTransformationMatrix() const;
+
         operator glm::mat4() const;
 
     private:

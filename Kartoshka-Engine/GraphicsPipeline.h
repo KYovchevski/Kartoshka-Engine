@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <set>
 
 namespace krt
 {
@@ -16,6 +17,9 @@ namespace krt
     class CommandBuffer;
     class DescriptorSetPool;
     class DescriptorSetAllocation;
+    class DescriptorSet;
+
+    enum ECommandQueueType : uint8_t;
 }
 
 namespace krt
@@ -169,6 +173,7 @@ namespace krt
 
 
         std::unique_ptr<DescriptorSetAllocation> AllocateDescriptorSet(uint32_t a_Slot);
+        std::unique_ptr<DescriptorSet> CreateDescriptorSet(uint32_t a_Slot, std::set<ECommandQueueType> a_QueuesWithAccess);
 
     private:
         VkShaderModule CreateShaderModule(std::string a_Filepath);

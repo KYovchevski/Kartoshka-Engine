@@ -87,6 +87,12 @@
     <ClCompile Include="Transform.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -161,6 +167,12 @@
     <ClInclude Include="Transform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GraphicsPipeline.inl">
@@ -173,6 +185,9 @@
       <Filter>Source Files</Filter>
     </None>
     <None Include="DescriptorSet.inl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="ModelManager.inl">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>

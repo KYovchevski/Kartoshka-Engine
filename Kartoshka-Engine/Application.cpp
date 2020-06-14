@@ -4,6 +4,7 @@
 #include "LogicalDevice.h"
 #include "PhysicalDevice.h"
 #include "Window.h"
+#include "ModelManager.h"
 #include "RenderPass.h"
 #include "GraphicsPipeline.h"
 #include "CommandQueue.h"
@@ -14,19 +15,20 @@
 #include "Framebuffer.h"
 #include "DescriptorSet.h"
 #include "IndexBuffer.h"
-
-#include "glm/glm.hpp"
+#include "Transform.h"
+#include "Camera.h"
+#include "Mesh.h"
 
 #include "VkHelpers.h"
+
+#include "glm/glm.hpp"
 #include "glm/vec3.hpp"
+
+#include "FX-GLTF/gltf.h"
 
 #include <algorithm>
 #include <set>
 #include <array>
-
-
-#include "vulkan/vulkan_core.h"
-
 
 krt::Application::Application()
     : m_Window(nullptr)
@@ -133,9 +135,11 @@ void krt::Application::InitializeVulkan(const InitializationInfo& a_Info)
     CreateRenderPass();
     CreateGraphicsPipeline();
 
-    LoadAssets();
     CreateSemaphores();
 
+    m_ModelManager = std::make_unique<ModelManager>(*m_ServiceLocator);
+
+    LoadAssets();
 }
 
 void krt::Application::SetupDebugMessenger()
@@ -186,12 +190,10 @@ void krt::Application::CreateGraphicsPipeline()
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec2>(0, 0, VK_FORMAT_R32G32_SFLOAT); // Tex Coords
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(1, 1, VK_FORMAT_R32G32B32_SFLOAT); // Positions
 
-    pipelineInfo.m_PipelineLayout.AddPushConstantRange<glm::vec4>(VK_SHADER_STAGE_VERTEX_BIT);
-    //pipelineInfo.m_PipelineLayout.AddPushConstantRange<glm::vec3>(VK_SHADER_STAGE_FRAGMENT_BIT);
+    pipelineInfo.m_PipelineLayout.AddPushConstantRange<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT);
 
-    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 0, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
-    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 2, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 0, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
     pipelineInfo.m_RenderPass = m_ForwardRenderPass.get();
     pipelineInfo.m_SubpassIndex = 0;
@@ -330,23 +332,33 @@ void krt::Application::LoadAssets()
     auto samplerInfo = Sampler::CreateInfo::CreateDefault();
     m_Sampler = std::make_unique<Sampler>(*m_ServiceLocator, samplerInfo);
 
+    m_Duccc = m_ModelManager->LoadModel("../../../../Assets/Models/Duck.gltf");
+
+    m_Mat = std::make_unique<Material>();
+    m_Mat->SetSampler(*m_Sampler);
+    m_Mat->SetDiffuseTexture(*m_Texture);
+
     commandBuffer.Submit();
     printf("Baking descriptor sets.\n");
     glm::vec3 v = { 0.0f, 0.0f, 0.0f };
     std::set<ECommandQueueType> queues = {EGraphicsQueue};
-    m_FrontTriangleSet = std::make_unique<DescriptorSet>(*m_ServiceLocator, *m_GraphicsPipeline, 0u, queues);
-    m_FrontTriangleSet->SetUniformBuffer(v, 0);
-    m_FrontTriangleSet->SetSampler(*m_Sampler, 1);
-    m_FrontTriangleSet->SetTexture(*m_Texture, 2);
+    //m_FrontTriangleSet = std::make_unique<DescriptorSet>(*m_ServiceLocator, *m_GraphicsPipeline, 0u, queues);
 
     v = { 0.0f, 0.5f, 0.1f };
 
-    m_BackTriangleSet = std::make_unique<DescriptorSet>(*m_ServiceLocator, *m_GraphicsPipeline, 0u, queues);
-    m_BackTriangleSet->SetUniformBuffer(v, 0);
-    m_BackTriangleSet->SetSampler(*m_Sampler, 1);
-    m_BackTriangleSet->SetTexture(*m_Texture, 2);
+    //m_BackTriangleSet = std::make_unique<DescriptorSet>(*m_ServiceLocator, *m_GraphicsPipeline, 0u, queues);
+
+    m_Camera = std::make_unique<Camera>();
+    m_Camera->SetPosition(glm::vec3(0.0f, 0.0f, -5.0f));
+    m_Camera->SetAspectRatio(m_Window->GetAspectRatio());
+    m_Camera->SetFarClipDistance(30.0f);
+
+    m_Transform = std::make_unique<Transform>();
+    m_Transform->SetScale(glm::vec3(1.0250f));
+    m_Transform->SetScale(glm::vec3(0.0050f));
 
     transferQueue.Flush();
+
     printf("All assets loaded.\n");
 }
 
@@ -361,9 +373,9 @@ void krt::Application::DrawFrame()
 
     VkViewport viewport;
     viewport.x = 0.0f;
-    viewport.y = 0.0f;
+    viewport.y = static_cast<float>(screenSize.y);
     viewport.width = static_cast<float>(screenSize.x);
-    viewport.height = static_cast<float>(screenSize.y);
+    viewport.height = -static_cast<float>(screenSize.y);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
@@ -382,34 +394,37 @@ void krt::Application::DrawFrame()
     commandBuffer.SetViewport(viewport);
     commandBuffer.BindPipeline(*m_GraphicsPipeline);
 
-    commandBuffer.SetVertexBuffer(*m_TexCoords, 0);
-    commandBuffer.SetVertexBuffer(*m_TriangleVertexBuffer, 1);
-    commandBuffer.SetIndexBuffer(*m_Indices);
-
     static float time = 0.0f;
     time += 1.0f / 60.0f;
 
-    glm::vec4 offset = glm::vec4(std::sin(time / 10.0f) / 2.0f, 0.0f, 0.8f, 1.0f);
-    
-    //commandBuffer.SetUniformBuffer(offset,0, 0);
-    //commandBuffer.SetSampler(*m_Sampler, 1, 0);
-    //commandBuffer.SetTexture(*m_Texture, 2, 0);
+    const glm::mat4& cameraMatrix = m_Camera->GetCameraMatrix();
 
-    commandBuffer.SetDescriptorSet(*m_FrontTriangleSet, 0);
-    commandBuffer.PushConstant(offset, 0);
+    glm::mat4 mvp;
 
-    commandBuffer.DrawIndexed(6);
+    m_Transform->SetPosition(glm::vec3(0.50f, -0.50f, 0.0f));
+    m_Transform->SetRotation(glm::vec3(0.0f, time * 10.0f, 0.0f));
 
-    offset = glm::vec4(-std::sin(time / 10.0f) / 2.0f, 0.0f, 0.5f, 1.0f);
+    mvp = cameraMatrix * m_Transform->GetTransformationMatrix();
+    commandBuffer.PushConstant(mvp, 0);
 
-    //commandBuffer.SetUniformBuffer(offset, 0, 0);
-    //commandBuffer.SetSampler(*m_Sampler, 1, 0);
-    //commandBuffer.SetTexture(*m_Texture, 2, 0);
+    for (auto& primitive : m_Duccc->m_Primitives)
+    {
+        commandBuffer.SetVertexBuffer(*primitive.m_TexCoords, 0);
+        commandBuffer.SetVertexBuffer(*primitive.m_Positions, 1);
+        commandBuffer.SetMaterial(*primitive.m_Material, 0);
 
-    commandBuffer.PushConstant(offset, 0);
-    commandBuffer.SetDescriptorSet(*m_BackTriangleSet, 0);
-    //vkCmdPushConstants(commandBuffer.GetVkCommandBuffer(), m_GraphicsPipeline->GetVkPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, 12, &offset);
-    commandBuffer.DrawIndexed(m_Indices->GetElementCount());
+        if (primitive.m_IndexBuffer)
+        {
+            commandBuffer.SetIndexBuffer(*primitive.m_IndexBuffer);
+            commandBuffer.DrawIndexed(primitive.m_IndexBuffer->GetElementCount());
+        }
+        else
+        {
+            commandBuffer.Draw(primitive.m_Positions->GetElementCount());
+        }
+
+    }
+
 
     commandBuffer.EndRenderPass();
     commandBuffer.AddSignalSemaphore(m_RenderFinishedSemaphore);

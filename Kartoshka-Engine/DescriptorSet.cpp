@@ -21,7 +21,8 @@ krt::DescriptorSet::DescriptorSet(ServiceLocator& a_Services, GraphicsPipeline& 
 
 krt::DescriptorSet::~DescriptorSet()
 {
-    m_DescriptorSetAllocation.reset();
+    if (m_DescriptorSetAllocation)
+        m_DescriptorSetAllocation.reset();
 }
 
 void krt::DescriptorSet::SetUniformBuffer(const void* a_Data, uint32_t a_DataSize, uint32_t a_Binding)
@@ -67,7 +68,7 @@ void krt::DescriptorSet::SetTexture(const Texture& a_Texture, uint32_t a_Binding
 
 }
 
-VkDescriptorSet krt::DescriptorSet::operator*()
+VkDescriptorSet krt::DescriptorSet::operator*() const
 {
     return **m_DescriptorSetAllocation;
 }

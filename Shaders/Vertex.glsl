@@ -1,19 +1,14 @@
 #version 450
 #pragma shader_stage(vertex)
 
-layout (location = 0) in vec2 inTex;
-layout (location = 1) in vec3 inPos;
-
-layout (binding = 0) uniform Offset
-{
-	vec3 vec1;
-} offset;
+layout (location = 0) in vec2 i_Tex;
+layout (location = 1) in vec3 i_Pos;
 
 layout(push_constant) uniform PushConstants {
-	vec4 vec;
-} pushConsts;
+	mat4 m_MVP;
+} u_Push;
 
-layout (location = 0) out vec2 outTex;
+layout (location = 0) out vec2 o_Tex;
 
 out gl_PerVertex
 {
@@ -22,8 +17,7 @@ out gl_PerVertex
 
 void main() 
 {
-	outTex = inTex;
-	
-	gl_Position = vec4(inPos.xyz + offset.vec1 + pushConsts.vec.xyz, 1.0);
-	
+	o_Tex = i_Tex;
+
+	gl_Position = u_Push.m_MVP * vec4(i_Pos, 1.0f);
 }

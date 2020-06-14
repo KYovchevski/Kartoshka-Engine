@@ -135,7 +135,7 @@ void krt::Camera::UpdateMatrix() const
 
     auto forward = glm::vec3(0.0f, 0.0f, 1.0f) * m_Rotation;
     auto up = glm::vec3(0.0f, 1.0f, 0.0f) * m_Rotation;
-    auto view = glm::lookAt(m_Position, m_Position * forward, up);
+    auto view = glm::lookAt(m_Position, m_Position + forward, up);
 
     m_ViewProjectionMatrix = proj * view;
     m_MatrixDirty = false;

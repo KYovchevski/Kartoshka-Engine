@@ -44,6 +44,7 @@ namespace krt
         VkFormat GetRenderSurfaceFormat() const;
         VkSurfaceKHR GetRenderSurface();
         glm::uvec2 GetScreenSize() const;
+        float GetAspectRatio() const;
         std::string GetWindowTitle() const;
         VkRect2D GetScreenRenderArea() const;
 
