@@ -9,10 +9,14 @@
 #include "IndexBuffer.h"
 #include "Sampler.h"
 #include "Texture.h"
+#include "Scene.h"
+#include "StaticMesh.h"
+#include "Transform.h"
 
 #include "FX-GLTF/gltf.h"
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 
 
 krt::ModelManager::ModelManager(ServiceLocator& a_Services)
@@ -26,45 +30,164 @@ krt::ModelManager::~ModelManager()
 {
 }
 
-krt::Mesh* krt::ModelManager::LoadModel(std::string a_Path)
+krt::ModelManager::GLTFResource* krt::ModelManager::LoadGltf(std::string a_Path)
 {
+    auto findIter = m_LoadedGLTFs.find(a_Path);
+
+    if (findIter != m_LoadedGLTFs.end())
+        return &(*findIter).second;
+
+    auto& res = m_LoadedGLTFs[a_Path];
+
     auto doc = fx::gltf::LoadFromText(a_Path);
 
-    auto mesh = doc.meshes[0];
+    res.m_LoadedTextures = LoadTextures(doc, a_Path);
+    res.m_Materials = LoadMaterials(doc, res);
+    res.m_Meshes = LoadMeshes(doc, res);
+    res.m_Scenes = LoadScenes(doc, res);
 
-    std::unique_ptr<Mesh> m = std::make_unique<Mesh>();
+    return& res;
+}
 
-    for (auto& primitive : mesh.primitives)
+std::vector<std::shared_ptr<krt::Mesh>> krt::ModelManager::LoadMeshes(fx::gltf::Document& a_Doc, krt::ModelManager::GLTFResource& a_Res)
+{
+    std::vector<std::shared_ptr<krt::Mesh>> meshes;
+
+    for (auto& fxMesh : a_Doc.meshes)
     {
-        Mesh::Primitive& prim = m->m_Primitives.emplace_back();
-        for (auto& attribute : primitive.attributes)
+        auto& mesh = meshes.emplace_back(std::make_shared<Mesh>());
+        for (auto& fxPrimitive : fxMesh.primitives)
         {
-            if (attribute.first == "POSITION")
+            auto& prim = mesh->m_Primitives.emplace_back();
+            for (auto& attribute : fxPrimitive.attributes)
             {
-                m_LoadedVertexBuffers.emplace_back(LoadVertexBuffer<glm::vec3>(doc, attribute.second));
-                prim.m_Positions = m_LoadedVertexBuffers.back().get();
+                if (attribute.first == "POSITION")
+                {
+                    prim.m_Positions = LoadVertexBuffer<glm::vec3>(a_Doc, attribute.second);
+                }
+                else if (attribute.first == "TEXCOORD_0")
+                {
+                    prim.m_TexCoords = LoadVertexBuffer<glm::vec2>(a_Doc, attribute.second);
+                }
             }
-            else if (attribute.first == "TEXCOORD_0")
-            {
-                m_LoadedVertexBuffers.emplace_back(LoadVertexBuffer<glm::vec2>(doc, attribute.second));
-                prim.m_TexCoords = m_LoadedVertexBuffers.back().get();
-            }
+            prim.m_IndexBuffer = LoadIndexBuffer(a_Doc, fxPrimitive.indices);
+
+            prim.m_Material = a_Res.m_Materials[fxPrimitive.material];
         }
+    }
 
-        m_LoadedIndexBuffers.emplace_back(LoadIndexBuffer(doc, primitive.indices));
-        prim.m_IndexBuffer = m_LoadedIndexBuffers.back().get();
+    return meshes;
+}
 
+std::vector<std::shared_ptr<krt::Scene>> krt::ModelManager::LoadScenes(fx::gltf::Document& a_Doc, GLTFResource& a_Res)
+{
+    std::vector<std::shared_ptr<krt::Scene>> scenes;
+    for (auto& fxScene : a_Doc.scenes)
+    {
+        auto& scene = scenes.emplace_back(std::make_shared<Scene>());
 
-        auto mat = LoadMaterial(doc, a_Path, primitive.material);
-        m_LoadedMaterials.push_back(std::move(mat));
-        prim.m_Material = m_LoadedMaterials.back().get();
+        Transform identity;
+
+        LoadNode(a_Doc, a_Res, fxScene.nodes.front(), identity, *scene);
 
     }
 
-    m_LoadedModels.emplace(a_Path, std::move(m));
-
-    return m_LoadedModels[a_Path].get();
+    return scenes;
 }
+
+void krt::ModelManager::LoadNode(fx::gltf::Document& a_Doc, GLTFResource& a_Res, int32_t a_NodeIndex,
+                                 const Transform& a_NodeParent, krt::Scene& a_Scene)
+{
+    auto& node = a_Doc.nodes[a_NodeIndex];
+
+    glm::vec3 pos = glm::vec3(node.translation[0], node.translation[1], node.translation[2]);
+
+    Transform local;
+    GetNodeTransform(node, local);
+    local.SetPosition(pos);
+
+    auto worldTransform = local * a_NodeParent;
+
+    if (node.mesh != -1)
+    {
+        auto& sMesh = a_Scene.m_StaticMeshes.emplace_back(std::make_unique<StaticMesh>());
+        *sMesh->m_Transform = worldTransform;
+        sMesh->SetMesh(a_Res.m_Meshes[node.mesh]);
+    }
+
+    for (auto& child : node.children)
+    {
+        LoadNode(a_Doc, a_Res, child, worldTransform, a_Scene);
+    }
+}
+
+void krt::ModelManager::GetNodeTransform(fx::gltf::Node& a_Node, Transform& a_Transform)
+{
+    auto& mat = a_Node.matrix;
+
+    // If the top row of the matrix is all zeroes, the node's scale is 0.0f on the X, so even if TRS is undefined it wouldn't matter
+    if (mat[0] || mat[1] || mat[2])
+    {
+        // Get the transformation based on the TRS provided in the file
+        glm::vec3 pos(a_Node.translation[0], a_Node.translation[1], a_Node.translation[2]);
+        glm::quat rot(a_Node.rotation[3], a_Node.rotation[0], a_Node.rotation[1], a_Node.rotation[2]);
+        glm::vec3 scale(a_Node.scale[0], a_Node.scale[1], a_Node.scale[2]);
+
+        a_Transform.SetPosition(pos);
+        a_Transform.SetRotation(rot);
+        a_Transform.SetScale(scale);
+    }
+    else
+    {
+        // Get the transformation from the matrix provided in the file
+        glm::mat4 glmMat = glm::mat4(0);
+        memcpy(&glmMat[0], &mat[0], mat.size() * sizeof(float));
+
+        a_Transform = glmMat;
+    }
+}
+
+std::vector<std::shared_ptr<krt::Material>> krt::ModelManager::LoadMaterials(fx::gltf::Document& a_Doc, krt::ModelManager::GLTFResource& a_Res)
+{
+    std::vector<std::shared_ptr<krt::Material>> materials;
+    for (auto& material : a_Doc.materials)
+    {
+        auto& mat = materials.emplace_back(std::make_shared<Material>());
+        mat->SetSampler(*m_DefaultSampler);
+        if (!material.pbrMetallicRoughness.baseColorTexture.empty())
+        {
+            mat->SetDiffuseTexture(*a_Res.m_LoadedTextures[material.pbrMetallicRoughness.baseColorTexture.index]);
+        }
+    }
+    return materials;
+}
+
+std::vector<std::shared_ptr<krt::Texture>> krt::ModelManager::LoadTextures(fx::gltf::Document& a_Doc, std::string a_Filepath)
+{
+    std::vector<std::shared_ptr<Texture>> textures;
+
+    auto& commandQueue = m_Services.m_LogicalDevice->GetCommandQueue(ETransferQueue);
+    auto& commandBuffer = commandQueue.GetSingleUseCommandBuffer();
+    commandBuffer.Begin();
+
+    for (auto& image : a_Doc.images)
+    {
+        // Don't want to support embedded textures yet, throw and assert if it's an embedded texture
+        assert(image.IsEmbeddedResource() || !image.uri.empty());
+
+        auto texPath = a_Filepath + "/../" + image.uri;
+
+        auto tex = commandBuffer.CreateTextureFromFile(texPath, { EGraphicsQueue });
+
+        textures.emplace_back(tex.release());
+    }
+
+    commandBuffer.Submit();
+    commandQueue.Flush();
+
+    return textures;
+}
+
 
 uint32_t krt::ModelManager::GetAttributeSize(fx::gltf::Accessor& a_Accessor)
 {
@@ -207,40 +330,3 @@ std::vector<uint8_t> krt::ModelManager::LoadRawData(fx::gltf::Document& a_Doc, i
 
     return data;
 }
-
-std::unique_ptr<krt::Material> krt::ModelManager::LoadMaterial(fx::gltf::Document a_Doc, std::string a_Filepath, uint32_t a_MaterialIndex)
-{
-    if (a_MaterialIndex < 0)
-        return nullptr;
-
-    std::unique_ptr<Material> m = std::make_unique<Material>();
-
-    m->SetSampler(*m_DefaultSampler);
-
-    auto& commandBuffer = m_Services.m_LogicalDevice->GetCommandQueue(ETransferQueue).GetSingleUseCommandBuffer();
-    commandBuffer.Begin();
-
-    auto mat = a_Doc.materials[a_MaterialIndex];
-    auto diffuse = mat.pbrMetallicRoughness.baseColorTexture;
-
-    if (!diffuse.empty())
-    {
-        auto image = a_Doc.images[diffuse.index];
-
-        // Don't want to support embedded textures yet, throw and assert if it's an embedded texture
-        assert(image.IsEmbeddedResource() || !image.uri.empty());
-
-        auto texPath = a_Filepath + "/../" + image.uri;
-
-        m_LoadedTextures.emplace_back(commandBuffer.CreateTextureFromFile(texPath, { EGraphicsQueue }));
-        auto tex = m_LoadedTextures.back().get();
-
-        m->SetDiffuseTexture(*tex);
-    }
-
-    commandBuffer.Submit();
-
-    return m;
-}
-
-

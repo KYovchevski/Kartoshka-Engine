@@ -25,6 +25,7 @@ namespace krt
     class DescriptorSet;
     class IndexBuffer;
     class Material;
+    class Scene;
     struct Mesh;
 
     class Camera;
@@ -98,6 +99,8 @@ namespace krt
 
     private:
 
+        void ProcessInput();
+
         uint32_t                        m_WindowWidth;
         uint32_t                        m_WindowHeight;
         std::string                     m_WindowTitle;
@@ -136,7 +139,9 @@ namespace krt
         std::unique_ptr<Camera>         m_Camera;
         std::unique_ptr<Transform>      m_Transform;
 
-        Mesh*                           m_Duccc;
+        std::shared_ptr<Mesh>           m_Duccc;
+
+        std::shared_ptr<Scene>          m_Sponza;
     };
 
     

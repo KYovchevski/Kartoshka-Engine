@@ -23,6 +23,7 @@
 
 #include "glm/glm.hpp"
 #include "glm/vec3.hpp"
+#include "glm/gtx/vec_swizzle.hpp"
 
 #include "FX-GLTF/gltf.h"
 
@@ -67,6 +68,7 @@ void krt::Application::Run(const InitializationInfo& a_Info)
 
     while (!m_Window->ShouldClose())
     {
+        ProcessInput();
         m_Window->PollEvents();
         DrawFrame();
     }
@@ -332,7 +334,10 @@ void krt::Application::LoadAssets()
     auto samplerInfo = Sampler::CreateInfo::CreateDefault();
     m_Sampler = std::make_unique<Sampler>(*m_ServiceLocator, samplerInfo);
 
-    m_Duccc = m_ModelManager->LoadModel("../../../../Assets/Models/Duck.gltf");
+    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza.gltf");
+
+    m_Duccc = res->GetMesh();
+    //m_Sponza = res->GetScene();
 
     m_Mat = std::make_unique<Material>();
     m_Mat->SetSampler(*m_Sampler);
@@ -351,11 +356,11 @@ void krt::Application::LoadAssets()
     m_Camera = std::make_unique<Camera>();
     m_Camera->SetPosition(glm::vec3(0.0f, 0.0f, -5.0f));
     m_Camera->SetAspectRatio(m_Window->GetAspectRatio());
-    m_Camera->SetFarClipDistance(30.0f);
+    m_Camera->SetFarClipDistance(80.0f);
 
     m_Transform = std::make_unique<Transform>();
     m_Transform->SetScale(glm::vec3(1.0250f));
-    m_Transform->SetScale(glm::vec3(0.0050f));
+    m_Transform->SetScale(glm::vec3(0.0250f));
 
     transferQueue.Flush();
 
@@ -401,17 +406,24 @@ void krt::Application::DrawFrame()
 
     glm::mat4 mvp;
 
-    m_Transform->SetPosition(glm::vec3(0.50f, -0.50f, 0.0f));
-    m_Transform->SetRotation(glm::vec3(0.0f, time * 10.0f, 0.0f));
+    //m_Transform->SetPosition(glm::vec3(0.50f, -0.50f, 0.0f));
+    //m_Transform->SetRotation(glm::vec3(0.0f, time * 10.0f, 0.0f));
 
     mvp = cameraMatrix * m_Transform->GetTransformationMatrix();
     commandBuffer.PushConstant(mvp, 0);
+
+
 
     for (auto& primitive : m_Duccc->m_Primitives)
     {
         commandBuffer.SetVertexBuffer(*primitive.m_TexCoords, 0);
         commandBuffer.SetVertexBuffer(*primitive.m_Positions, 1);
-        commandBuffer.SetMaterial(*primitive.m_Material, 0);
+
+        if (primitive.m_Material)
+        {
+            commandBuffer.SetMaterial(*primitive.m_Material, 0);
+        }
+
 
         if (primitive.m_IndexBuffer)
         {
@@ -455,3 +467,52 @@ VkBool32 krt::Application::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT 
     return VK_FALSE;
 }
 
+
+void krt::Application::ProcessInput()
+{
+    auto cameraRotation = glm::mat4_cast(m_Camera->GetRotationQuat());
+
+    auto forward4 = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) * cameraRotation;
+    auto right4 = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) *  cameraRotation;
+
+    auto forward = glm::vec3(forward4.x, forward4.y, forward4.z);
+    auto right = glm::vec3(right4.x, right4.y, right4.z);
+    
+    if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_W))
+    {
+        m_Camera->Move(forward * 1.0f / 60.0f);
+    }
+    else if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_S))
+    {
+        m_Camera->Move(forward * -1.0f / 60.0f);
+    }
+
+
+    if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_A))
+    {
+        m_Camera->Move(right * -1.0f / 60.0f);
+    }
+    else if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_D))
+    {
+        m_Camera->Move(right * 1.0f / 60.0f);
+    };
+
+
+    if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_Q))
+    {
+        m_Camera->Move(glm::vec3(0.0f, -1.0f * 1.0f / 60.0f, 0.0f));
+    }
+    else if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_E))
+    {
+        m_Camera->Move(glm::vec3(0.0f, 1.0f * 1.0f / 60.0f, 0.0f));
+    };
+
+    if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_LEFT))
+    {
+        m_Camera->Rotate(glm::vec3(0.0f, 30.0f * 1.0f / 60.0f, 0.0f));
+    }
+    else if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_RIGHT))
+    {
+        m_Camera->Rotate(glm::vec3(0.0f, -30.0f * 1.0f / 60.0f, 0.0f));
+    };
+}

@@ -2,6 +2,8 @@
 #include "GraphicsPipeline.h"
 #include "LogicalDevice.h"
 #include "DescriptorSet.h"
+#include "IndexBuffer.h"
+#include "VertexBuffer.h"
 
 krt::Material::Material()
     : m_Sampler(nullptr)
@@ -53,6 +55,8 @@ void krt::Material::BuildDescriptorSet() const
 {
     m_DescriptorSet->SetSampler(*m_Sampler, 0);
     m_DescriptorSet->SetTexture(*m_DiffuseTexture, 1);
+    m_DescriptorSetDirty = false;
+
 }
 
 krt::Mesh::Mesh()

@@ -123,5 +123,5 @@ void krt::DescriptorSet::UpdateUniformBuffer(const void* a_Data, uint32_t a_Size
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_QueuesWithAccess);
 
     m_Services.m_LogicalDevice->CopyToDeviceMemory(staging->m_VkDeviceMemory, a_Data, a_Size);
-
+    
 }   

@@ -162,6 +162,7 @@
     <ClCompile Include="PhysicalDevice.cpp" />
     <ClCompile Include="RenderPass.cpp" />
     <ClCompile Include="Sampler.cpp" />
+    <ClCompile Include="StaticMesh.cpp" />
     <ClCompile Include="stb_image.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Transform.cpp" />
@@ -189,7 +190,9 @@
     <ClInclude Include="PhysicalDevice.h" />
     <ClInclude Include="RenderPass.h" />
     <ClInclude Include="Sampler.h" />
+    <ClInclude Include="Scene.h" />
     <ClInclude Include="ServiceLocator.h" />
+    <ClInclude Include="StaticMesh.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="VertexBuffer.h" />

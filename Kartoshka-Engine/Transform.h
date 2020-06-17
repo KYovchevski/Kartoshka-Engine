@@ -12,6 +12,13 @@ namespace krt
         Transform();
         ~Transform();
 
+        Transform(Transform& a_Other);
+        Transform& operator=(Transform& a_Other);
+
+        // Constructor and assignment operator from glm::mat4
+        Transform(glm::mat4& a_TransformationMatrix);
+        Transform& operator=(glm::mat4& a_TransformationMatrix);
+
         void SetPosition(const glm::vec3& a_NewPosition);
         void SetRotation(const glm::quat& a_Quaternion);
         void SetRotation(const glm::vec3& a_EulerDegrees);
@@ -36,9 +43,13 @@ namespace krt
 
         operator glm::mat4() const;
 
+        Transform& operator*=(const krt::Transform& a_Other);
+
     private:
         void MakeDirty();
         void UpdateMatrix() const;
+
+        void Decompose();
 
         glm::vec3 m_Position;
         glm::quat m_Rotation;
@@ -49,5 +60,7 @@ namespace krt
 
 
     };
+
+    Transform operator*(const krt::Transform& a_Left, const krt::Transform& a_Right);
 }
 

@@ -55,6 +55,8 @@ namespace krt
         void SetWindowTitle(std::string a_NewTitle);
 
         void DestroySwapChain();
+
+        GLFWwindow* GetGLFWwindow() { return m_Window; }
     private:
 
         void CreateImageViews();

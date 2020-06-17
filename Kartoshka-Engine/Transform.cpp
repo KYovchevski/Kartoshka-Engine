@@ -1,5 +1,7 @@
 #include "Transform.h"
 
+#include <glm/gtx/matrix_decompose.inl>
+
 krt::Transform::Transform()
     : m_Position(0.0f)
     , m_Rotation(1.0f, 0.0f, 0.0f, 0.0f)
@@ -10,8 +12,42 @@ krt::Transform::Transform()
 
 }
 
+krt::Transform::Transform(glm::mat4& a_TransformationMatrix)
+    : m_TransformationMatrix(a_TransformationMatrix)
+    , m_MatrixDirty(false)
+{
+    Decompose();
+}
+
 krt::Transform::~Transform()
 {
+}
+
+krt::Transform::Transform(Transform& a_Other)
+{
+    a_Other.UpdateMatrix();
+    m_Position = a_Other.m_Position;
+    m_Rotation = a_Other.m_Rotation;
+    m_Scale = a_Other.m_Scale;
+    m_TransformationMatrix = a_Other.m_TransformationMatrix;
+}
+
+krt::Transform& krt::Transform::operator=(Transform& a_Other)
+{
+    a_Other.UpdateMatrix();
+    m_Position = a_Other.m_Position;
+    m_Rotation = a_Other.m_Rotation;
+    m_Scale = a_Other.m_Scale;
+    m_TransformationMatrix = a_Other.m_TransformationMatrix;
+
+    return *this;
+}
+
+krt::Transform& krt::Transform::operator=(glm::mat4& a_TransformationMatrix)
+{
+    m_TransformationMatrix = a_TransformationMatrix;
+    Decompose();
+    return *this;
 }
 
 void krt::Transform::SetPosition(const glm::vec3& a_NewPosition)
@@ -112,6 +148,14 @@ krt::Transform::operator glm::mat<4, 4, float, glm::defaultp>() const
     return GetTransformationMatrix();
 }
 
+krt::Transform& krt::Transform::operator*=(const krt::Transform& a_Other)
+{
+    m_TransformationMatrix *= a_Other.GetTransformationMatrix();
+    Decompose();
+
+    return *this;
+}
+
 void krt::Transform::MakeDirty()
 {
     m_MatrixDirty = true;
@@ -132,4 +176,21 @@ void krt::Transform::UpdateMatrix() const
 
     m_MatrixDirty = false;
 
+}
+
+void krt::Transform::Decompose()
+{
+    // Needed for glm::decompose
+    glm::vec3 skew;
+    glm::vec4 perspective;
+
+    glm::decompose(m_TransformationMatrix, m_Position, m_Rotation, m_Scale, skew, perspective);
+}
+
+krt::Transform krt::operator*(const krt::Transform& a_Left, const krt::Transform& a_Right)
+{
+    auto mat = a_Left.GetTransformationMatrix() * a_Right.GetTransformationMatrix();
+    Transform t(mat);
+
+    return t;
 }

@@ -51,12 +51,12 @@ namespace krt
 
         struct Primitive
         {
-            VertexBuffer* m_Positions;
-            VertexBuffer* m_TexCoords;
+            std::unique_ptr<VertexBuffer> m_Positions;
+            std::unique_ptr<VertexBuffer> m_TexCoords;
 
-            IndexBuffer* m_IndexBuffer;
+            std::unique_ptr<IndexBuffer> m_IndexBuffer;
 
-            Material* m_Material;
+            std::shared_ptr<Material> m_Material;
         };
 
         std::vector<Primitive> m_Primitives;
