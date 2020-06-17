@@ -20,13 +20,6 @@
 *.mod
 *.smod
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-
 # Executables
 *.exe
 *.out
@@ -37,6 +30,43 @@
 
 # Build folder
 Build
+
+# Any Spir-V files
 *.spv
 
-!Tools/*
+# Tool directory
+!Tools/
+
+
+# All static libs
+#Dependencies/Libs
+
+
+
+!Dependencies/Libs/glfw/glfw3.lib
+Dependencies/Libs/glfw/glfw3dll.lib
+Dependencies/Libs/Vulkan/glslang.lib
+Dependencies/Libs/Vulkan/HLSL.lib
+Dependencies/Libs/Vulkan/OGLCompiler.lib
+Dependencies/Libs/Vulkan/OSDependent.lib
+Dependencies/Libs/Vulkan/shaderc.lib
+Dependencies/Libs/Vulkan/shaderc_combined.lib
+Dependencies/Libs/Vulkan/shaderc_shared.lib
+Dependencies/Libs/Vulkan/shaderc_util.lib
+Dependencies/Libs/Vulkan/spirv-cross-c-shared.lib
+Dependencies/Libs/Vulkan/spirv-cross-c.lib
+Dependencies/Libs/Vulkan/spirv-cross-core.lib
+Dependencies/Libs/Vulkan/spirv-cross-cpp.lib
+Dependencies/Libs/Vulkan/spirv-cross-glsl.lib
+Dependencies/Libs/Vulkan/spirv-cross-hlsl.lib
+Dependencies/Libs/Vulkan/spirv-cross-msl.lib
+Dependencies/Libs/Vulkan/spirv-cross-reflect.lib
+Dependencies/Libs/Vulkan/spirv-cross-util.lib
+Dependencies/Libs/Vulkan/SPIRV-Tools-link.lib
+Dependencies/Libs/Vulkan/SPIRV-Tools-opt.lib
+Dependencies/Libs/Vulkan/SPIRV-Tools-reduce.lib
+Dependencies/Libs/Vulkan/SPIRV-Tools-shared.lib
+Dependencies/Libs/Vulkan/SPIRV-Tools.lib
+Dependencies/Libs/Vulkan/SPIRV.lib
+Dependencies/Libs/Vulkan/SPVRemapper.lib
+Dependencies/Libs/Vulkan/VkLayer_utils.lib
