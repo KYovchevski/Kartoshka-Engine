@@ -1,6 +1,9 @@
 #pragma once
 
+
 #include "vulkan/vulkan.h"
+#include <map>
+#include <string>
 
 namespace krt
 {
@@ -8,6 +11,7 @@ namespace krt
     class PhysicalDevice;
     class LogicalDevice;
     class ModelManager;
+    class GraphicsPipeline;
 }
 
 namespace krt
@@ -20,6 +24,7 @@ namespace krt
         PhysicalDevice* m_PhysicalDevice;
         LogicalDevice* m_LogicalDevice;
         ModelManager* m_ModelManager;
+        std::map<std::string, GraphicsPipeline*> m_GraphicsPipelines;
     };
 
 }

@@ -18,6 +18,9 @@
 #include "Transform.h"
 #include "Camera.h"
 #include "Mesh.h"
+#include "Scene.h"
+#include "StaticMesh.h"
+#include "PointLight.h"
 
 #include "VkHelpers.h"
 
@@ -30,6 +33,12 @@
 #include <algorithm>
 #include <set>
 #include <array>
+
+struct Mats
+{
+    glm::mat4 m_WorldView;
+    glm::mat4 m_MVP;
+};
 
 krt::Application::Application()
     : m_Window(nullptr)
@@ -191,17 +200,24 @@ void krt::Application::CreateGraphicsPipeline()
 
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec2>(0, 0, VK_FORMAT_R32G32_SFLOAT); // Tex Coords
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(1, 1, VK_FORMAT_R32G32B32_SFLOAT); // Positions
+    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec4>(2, 2, VK_FORMAT_R32G32B32A32_SFLOAT); // Vertex Colors
+    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(3, 3, VK_FORMAT_R32G32B32_SFLOAT); // Normals
 
-    pipelineInfo.m_PipelineLayout.AddPushConstantRange<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT);
+    pipelineInfo.m_PipelineLayout.AddPushConstantRange<Mats>(VK_SHADER_STAGE_VERTEX_BIT);
 
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 0, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 2, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(1, 0, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
     pipelineInfo.m_RenderPass = m_ForwardRenderPass.get();
     pipelineInfo.m_SubpassIndex = 0;
 
 
     m_GraphicsPipeline = std::make_unique<GraphicsPipeline>(*m_ServiceLocator, pipelineInfo);
+
+    m_ServiceLocator->m_GraphicsPipelines.emplace("Scene", m_GraphicsPipeline.get());
 
     printf("Graphics pipeline created successfully.\n");
 }
@@ -334,10 +350,16 @@ void krt::Application::LoadAssets()
     auto samplerInfo = Sampler::CreateInfo::CreateDefault();
     m_Sampler = std::make_unique<Sampler>(*m_ServiceLocator, samplerInfo);
 
-    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza.gltf");
+    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
+    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/CrowdKing/JL.gltf");
+    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Lantern/Lantern.gltf");
 
     m_Duccc = res->GetMesh();
-    //m_Sponza = res->GetScene();
+    m_Sponza = res->GetScene();
+
+    auto light = m_Sponza->AddPointLight();
+
+    light->SetPosition(glm::vec3(0.0f, 15.0f, 0.0f));
 
     m_Mat = std::make_unique<Material>();
     m_Mat->SetSampler(*m_Sampler);
@@ -356,7 +378,8 @@ void krt::Application::LoadAssets()
     m_Camera = std::make_unique<Camera>();
     m_Camera->SetPosition(glm::vec3(0.0f, 0.0f, -5.0f));
     m_Camera->SetAspectRatio(m_Window->GetAspectRatio());
-    m_Camera->SetFarClipDistance(80.0f);
+    m_Camera->SetFarClipDistance(150.0f);
+    m_Sponza->m_ActiveCamera = m_Camera.get();
 
     m_Transform = std::make_unique<Transform>();
     m_Transform->SetScale(glm::vec3(1.0250f));
@@ -402,39 +425,46 @@ void krt::Application::DrawFrame()
     static float time = 0.0f;
     time += 1.0f / 60.0f;
 
-    const glm::mat4& cameraMatrix = m_Camera->GetCameraMatrix();
+    glm::mat4 cameraMatrix = m_Camera->GetCameraMatrix();
+    glm::mat4 viewMatrix = m_Camera->GetViewMatrix();
 
-    glm::mat4 mvp;
-
-    //m_Transform->SetPosition(glm::vec3(0.50f, -0.50f, 0.0f));
-    //m_Transform->SetRotation(glm::vec3(0.0f, time * 10.0f, 0.0f));
-
-    mvp = cameraMatrix * m_Transform->GetTransformationMatrix();
-    commandBuffer.PushConstant(mvp, 0);
-
-
-
-    for (auto& primitive : m_Duccc->m_Primitives)
+    commandBuffer.SetDescriptorSet(m_Sponza->GetLightsDescriptorSet(), 1);
+    for (auto& mesh : m_Sponza->m_StaticMeshes)
     {
-        commandBuffer.SetVertexBuffer(*primitive.m_TexCoords, 0);
-        commandBuffer.SetVertexBuffer(*primitive.m_Positions, 1);
+        auto& m = *mesh;
+        glm::mat4 mvp;
 
-        if (primitive.m_Material)
+        Mats mats;
+
+        mats.m_MVP = cameraMatrix * mesh->m_Transform->GetTransformationMatrix();
+        mats.m_WorldView = viewMatrix * mesh->m_Transform->GetTransformationMatrix();
+
+        mvp = cameraMatrix * mesh->m_Transform->GetTransformationMatrix();
+        commandBuffer.PushConstant(mats, 0);
+
+        for (auto& primitive : m->m_Primitives)
         {
-            commandBuffer.SetMaterial(*primitive.m_Material, 0);
-        }
+            commandBuffer.SetVertexBuffer(*primitive.m_TexCoords, 0);
+            commandBuffer.SetVertexBuffer(*primitive.m_Positions, 1);
+            commandBuffer.SetVertexBuffer(*primitive.m_VertexColors, 2);
+            commandBuffer.SetVertexBuffer(*primitive.m_Normals, 3);
+
+            if (primitive.m_Material)
+            {
+                commandBuffer.SetMaterial(*primitive.m_Material, 0);
+            }
 
 
-        if (primitive.m_IndexBuffer)
-        {
-            commandBuffer.SetIndexBuffer(*primitive.m_IndexBuffer);
-            commandBuffer.DrawIndexed(primitive.m_IndexBuffer->GetElementCount());
+            if (primitive.m_IndexBuffer)
+            {
+                commandBuffer.SetIndexBuffer(*primitive.m_IndexBuffer);
+                commandBuffer.DrawIndexed(primitive.m_IndexBuffer->GetElementCount());
+            }
+            else
+            {
+                commandBuffer.Draw(primitive.m_Positions->GetElementCount());
+            }
         }
-        else
-        {
-            commandBuffer.Draw(primitive.m_Positions->GetElementCount());
-        }
-
     }
 
 
@@ -477,34 +507,36 @@ void krt::Application::ProcessInput()
 
     auto forward = glm::vec3(forward4.x, forward4.y, forward4.z);
     auto right = glm::vec3(right4.x, right4.y, right4.z);
-    
+
+    static const float moveSpeed = 1.0f;
+
     if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_W))
     {
-        m_Camera->Move(forward * 1.0f / 60.0f);
+        m_Camera->Move(forward * moveSpeed / 60.0f);
     }
     else if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_S))
     {
-        m_Camera->Move(forward * -1.0f / 60.0f);
+        m_Camera->Move(forward * -moveSpeed / 60.0f);
     }
 
 
     if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_A))
     {
-        m_Camera->Move(right * -1.0f / 60.0f);
+        m_Camera->Move(right * -moveSpeed / 60.0f);
     }
     else if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_D))
     {
-        m_Camera->Move(right * 1.0f / 60.0f);
+        m_Camera->Move(right * moveSpeed / 60.0f);
     };
 
 
     if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_Q))
     {
-        m_Camera->Move(glm::vec3(0.0f, -1.0f * 1.0f / 60.0f, 0.0f));
+        m_Camera->Move(glm::vec3(0.0f, -1.0f * moveSpeed / 60.0f, 0.0f));
     }
     else if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_E))
     {
-        m_Camera->Move(glm::vec3(0.0f, 1.0f * 1.0f / 60.0f, 0.0f));
+        m_Camera->Move(glm::vec3(0.0f, 1.0f * moveSpeed / 60.0f, 0.0f));
     };
 
     if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_LEFT))

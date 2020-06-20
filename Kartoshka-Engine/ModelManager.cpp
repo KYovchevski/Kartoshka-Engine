@@ -24,6 +24,14 @@ krt::ModelManager::ModelManager(ServiceLocator& a_Services)
 {
     Sampler::CreateInfo info = Sampler::CreateInfo::CreateDefault();
     m_DefaultSampler = std::make_unique<Sampler>(m_Services, info);
+
+    auto& commandBuffer = m_Services.m_LogicalDevice->GetCommandQueue(ETransferQueue).GetSingleUseCommandBuffer();
+    commandBuffer.Begin();
+
+    m_DefaultDiffuse = commandBuffer.CreateTextureFromFile("../../../../Assets/Textures/DiffuseDefault.png", { EGraphicsQueue });
+
+    commandBuffer.Submit();
+
 }
 
 krt::ModelManager::~ModelManager()
@@ -69,10 +77,28 @@ std::vector<std::shared_ptr<krt::Mesh>> krt::ModelManager::LoadMeshes(fx::gltf::
                 {
                     prim.m_TexCoords = LoadVertexBuffer<glm::vec2>(a_Doc, attribute.second);
                 }
+                else if (attribute.first == "COLOR_0")
+                {
+                    prim.m_VertexColors = LoadVertexBuffer<glm::vec4>(a_Doc, attribute.second);
+                }
+                else if (attribute.first == "NORMAL")
+                {
+                    prim.m_Normals = LoadVertexBuffer<glm::vec3>(a_Doc, attribute.second);
+                }
             }
             prim.m_IndexBuffer = LoadIndexBuffer(a_Doc, fxPrimitive.indices);
 
             prim.m_Material = a_Res.m_Materials[fxPrimitive.material];
+
+            if (!prim.m_VertexColors)
+            {
+                std::vector<float> colors = std::vector<float>(prim.m_Positions->GetElementCount() * 4, 1.0f);
+                std::vector<uint8_t> bytes = std::vector<uint8_t>(colors.size() * sizeof(float));
+
+                memcpy(bytes.data(), colors.data(), bytes.size());
+
+                prim.m_VertexColors = MakeVertexBuffer(bytes, static_cast<uint32_t>(sizeof(glm::vec4)));
+            }
         }
     }
 
@@ -84,12 +110,14 @@ std::vector<std::shared_ptr<krt::Scene>> krt::ModelManager::LoadScenes(fx::gltf:
     std::vector<std::shared_ptr<krt::Scene>> scenes;
     for (auto& fxScene : a_Doc.scenes)
     {
-        auto& scene = scenes.emplace_back(std::make_shared<Scene>());
+        auto& scene = scenes.emplace_back(std::make_shared<Scene>(m_Services));
 
         Transform identity;
 
-        LoadNode(a_Doc, a_Res, fxScene.nodes.front(), identity, *scene);
-
+        for (auto& node : fxScene.nodes)
+        {
+            LoadNode(a_Doc, a_Res, node, identity, *scene);
+        }
     }
 
     return scenes;
@@ -125,8 +153,15 @@ void krt::ModelManager::GetNodeTransform(fx::gltf::Node& a_Node, Transform& a_Tr
 {
     auto& mat = a_Node.matrix;
 
-    // If the top row of the matrix is all zeroes, the node's scale is 0.0f on the X, so even if TRS is undefined it wouldn't matter
-    if (mat[0] || mat[1] || mat[2])
+    if (a_Node.matrix != fx::gltf::defaults::IdentityMatrix)
+    {
+        // Get the transformation from the matrix provided in the file
+        glm::mat4 glmMat = glm::mat4(0);
+        memcpy(&glmMat[0], &mat[0], mat.size() * sizeof(float));
+
+        a_Transform = glmMat;
+
+    }
     {
         // Get the transformation based on the TRS provided in the file
         glm::vec3 pos(a_Node.translation[0], a_Node.translation[1], a_Node.translation[2]);
@@ -135,15 +170,7 @@ void krt::ModelManager::GetNodeTransform(fx::gltf::Node& a_Node, Transform& a_Tr
 
         a_Transform.SetPosition(pos);
         a_Transform.SetRotation(rot);
-        a_Transform.SetScale(scale);
-    }
-    else
-    {
-        // Get the transformation from the matrix provided in the file
-        glm::mat4 glmMat = glm::mat4(0);
-        memcpy(&glmMat[0], &mat[0], mat.size() * sizeof(float));
-
-        a_Transform = glmMat;
+        a_Transform.SetScale(scale);        
     }
 }
 
@@ -158,6 +185,16 @@ std::vector<std::shared_ptr<krt::Material>> krt::ModelManager::LoadMaterials(fx:
         {
             mat->SetDiffuseTexture(*a_Res.m_LoadedTextures[material.pbrMetallicRoughness.baseColorTexture.index]);
         }
+        else
+        {
+            mat->SetDiffuseTexture(*m_DefaultDiffuse);
+        }
+
+        glm::vec4 diffuse = glm::vec4(material.pbrMetallicRoughness.baseColorFactor[0], material.pbrMetallicRoughness.baseColorFactor[1],
+            material.pbrMetallicRoughness.baseColorFactor[2], material.pbrMetallicRoughness.baseColorFactor[3]);
+
+        mat->SetDiffuseColor(diffuse);
+
     }
     return materials;
 }

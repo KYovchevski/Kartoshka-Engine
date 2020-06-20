@@ -21,13 +21,13 @@ krt::Camera::~Camera()
 void krt::Camera::SetPosition(const glm::vec3& a_NewPosition)
 {
     m_Position = a_NewPosition;
-    MakeDirty();
+    MakeViewDirty();
 }
 
 void krt::Camera::SetRotation(const glm::quat& a_Quaternion)
 {
     m_Rotation = a_Quaternion;
-    MakeDirty();
+    MakeViewDirty();
 }
 
 void krt::Camera::SetRotation(const glm::vec3& a_EulerDegrees)
@@ -63,25 +63,25 @@ void krt::Camera::Rotate(const glm::vec3& a_Pivot, float a_Degrees)
 void krt::Camera::SetFieldOfView(float a_NewFoV)
 {
     m_FieldOfView = a_NewFoV;
-    MakeDirty();
+    MakeProjDirty();
 }
 
 void krt::Camera::SetAspectRatio(float a_NewAspectRatio)
 {
     m_AspectRatio = a_NewAspectRatio;
-    MakeDirty();
+    MakeProjDirty();
 }
 
 void krt::Camera::SetNearClipDistance(float a_NewNearClip)
 {
     m_NearClipPlane = a_NewNearClip;
-    MakeDirty();
+    MakeProjDirty();
 }
 
 void krt::Camera::SetFarClipDistance(float a_NewFarClip)
 {
     m_FarClipPlane = a_NewFarClip;
-    MakeDirty();
+    MakeProjDirty();
 }
 
 const glm::vec3& krt::Camera::GetPosition() const
@@ -121,6 +121,30 @@ const glm::mat4 krt::Camera::GetCameraMatrix() const
     return m_ViewProjectionMatrix;
 }
 
+const glm::mat4 krt::Camera::GetViewMatrix() const
+{
+    UpdateViewMatrix();
+    return m_ViewMatrix;
+}
+
+void krt::Camera::MakeProjDirty()
+{
+    m_ProjectionDirty = true;
+    MakeDirty();
+}
+
+const glm::mat4 krt::Camera::GetProjectionMatrix() const
+{
+    UpdateProjectionMatrix();
+    return m_ProjectionMatrix;
+}
+
+void krt::Camera::MakeViewDirty()
+{
+    m_ViewDirty = true;
+    MakeDirty();
+}
+
 void krt::Camera::MakeDirty()
 {
     m_MatrixDirty = true;
@@ -131,12 +155,28 @@ void krt::Camera::UpdateMatrix() const
     if (!m_MatrixDirty)
         return;
 
-    auto proj = glm::perspective(glm::radians(m_FieldOfView), m_AspectRatio, m_NearClipPlane, m_FarClipPlane);
-
-    auto forward = glm::vec3(0.0f, 0.0f, 1.0f) * m_Rotation;
-    auto up = glm::vec3(0.0f, 1.0f, 0.0f) * m_Rotation;
-    auto view = glm::lookAt(m_Position, m_Position + forward, up);
-
-    m_ViewProjectionMatrix = proj * view;
+    m_ViewProjectionMatrix = GetProjectionMatrix() * GetViewMatrix();
     m_MatrixDirty = false;
+}
+
+void krt::Camera::UpdateViewMatrix() const
+{
+    if (m_ViewDirty)
+    {
+        auto forward = glm::vec3(0.0f, 0.0f, 1.0f) * m_Rotation;
+        auto up = glm::vec3(0.0f, 1.0f, 0.0f) * m_Rotation;
+        m_ViewMatrix = glm::lookAt(m_Position, m_Position + forward, up);
+
+        m_ViewDirty = false;
+    }
+}
+
+void krt::Camera::UpdateProjectionMatrix() const
+{
+    if (m_ProjectionDirty)
+    {
+        m_ProjectionMatrix = glm::perspective(glm::radians(m_FieldOfView), m_AspectRatio, m_NearClipPlane, m_FarClipPlane);
+
+        m_ProjectionDirty = false;
+    }
 }

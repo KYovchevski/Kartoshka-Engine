@@ -184,7 +184,7 @@ void krt::Transform::Decompose()
     glm::vec3 skew;
     glm::vec4 perspective;
 
-    glm::decompose(m_TransformationMatrix, m_Position, m_Rotation, m_Scale, skew, perspective);
+    glm::decompose(m_TransformationMatrix, m_Scale, m_Rotation, m_Position, skew, perspective);
 }
 
 krt::Transform krt::operator*(const krt::Transform& a_Left, const krt::Transform& a_Right)

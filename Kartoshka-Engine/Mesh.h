@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <glm/vec4.hpp>
 
 namespace krt
 {
@@ -27,6 +28,7 @@ namespace krt
 
         void SetSampler(const Sampler& a_NewSampler);
         void SetDiffuseTexture(const Texture& a_NewDiffuseTexture);
+        void SetDiffuseColor(const glm::vec4& a_NewDiffuseColor);
 
         const DescriptorSet& GetDescriptorSet(GraphicsPipeline& a_TargetPipeline, uint32_t a_SetIndex) const;
 
@@ -37,6 +39,7 @@ namespace krt
 
         const Sampler* m_Sampler;
         const Texture* m_DiffuseTexture;
+        glm::vec4 m_DiffuseColor;
 
         mutable std::unique_ptr<DescriptorSet> m_DescriptorSet;
         mutable bool m_DescriptorSetDirty;
@@ -53,6 +56,8 @@ namespace krt
         {
             std::unique_ptr<VertexBuffer> m_Positions;
             std::unique_ptr<VertexBuffer> m_TexCoords;
+            std::unique_ptr<VertexBuffer> m_VertexColors;
+            std::unique_ptr<VertexBuffer> m_Normals;
 
             std::unique_ptr<IndexBuffer> m_IndexBuffer;
 

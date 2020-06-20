@@ -35,10 +35,17 @@ namespace krt
         float GetFarClipDistance() const;
 
         const glm::mat4 GetCameraMatrix() const;
+        const glm::mat4 GetViewMatrix() const;
+        const glm::mat4 GetProjectionMatrix() const;
 
     private:
+        void MakeProjDirty();
+        void MakeViewDirty();
         void MakeDirty();
+
         void UpdateMatrix() const;
+        void UpdateViewMatrix() const;
+        void UpdateProjectionMatrix() const;
 
         glm::vec3 m_Position;
         glm::quat m_Rotation;
@@ -50,6 +57,12 @@ namespace krt
 
         mutable glm::mat4 m_ViewProjectionMatrix;
         mutable bool m_MatrixDirty;
+
+        mutable glm::mat4 m_ProjectionMatrix;
+        mutable bool m_ProjectionDirty;
+
+        mutable glm::mat4 m_ViewMatrix;
+        mutable bool m_ViewDirty;
     };
 }
 
