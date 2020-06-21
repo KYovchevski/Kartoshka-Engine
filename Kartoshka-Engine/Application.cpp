@@ -21,12 +21,15 @@
 #include "Scene.h"
 #include "StaticMesh.h"
 #include "PointLight.h"
+#include "ImGui.h"
 
 #include "VkHelpers.h"
 
 #include "glm/glm.hpp"
 #include "glm/vec3.hpp"
 #include "glm/gtx/vec_swizzle.hpp"
+
+#include "ImGui/imgui.h"
 
 #include "FX-GLTF/gltf.h"
 
@@ -36,7 +39,7 @@
 
 struct Mats
 {
-    glm::mat4 m_WorldView;
+    glm::mat4 m_World;
     glm::mat4 m_MVP;
 };
 
@@ -151,6 +154,8 @@ void krt::Application::InitializeVulkan(const InitializationInfo& a_Info)
     m_ModelManager = std::make_unique<ModelManager>(*m_ServiceLocator);
 
     LoadAssets();
+
+    InitializeImGui();
 }
 
 void krt::Application::SetupDebugMessenger()
@@ -202,12 +207,14 @@ void krt::Application::CreateGraphicsPipeline()
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(1, 1, VK_FORMAT_R32G32B32_SFLOAT); // Positions
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec4>(2, 2, VK_FORMAT_R32G32B32A32_SFLOAT); // Vertex Colors
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(3, 3, VK_FORMAT_R32G32B32_SFLOAT); // Normals
+    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec4>(4, 4, VK_FORMAT_R32G32B32A32_SFLOAT); // Tangents
 
     pipelineInfo.m_PipelineLayout.AddPushConstantRange<Mats>(VK_SHADER_STAGE_VERTEX_BIT);
 
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 0, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 2, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 3, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(1, 0, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
@@ -257,7 +264,7 @@ void krt::Application::CreateRenderPass()
     // The layout the attachment is in before the render pass
     attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     // The layout the attachment will be in after the render pass
-    attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference attachmentReference = {};
     // The index of the attachment in the attachment descriptions array
@@ -337,6 +344,7 @@ void krt::Application::LoadAssets()
     auto& commandBuffer = transferQueue.GetSingleUseCommandBuffer();
 
 
+
     printf("Creating vertex buffers.\n");
     commandBuffer.Begin();
     m_TriangleVertexBuffer = commandBuffer.CreateVertexBuffer(positions, { EGraphicsQueue });
@@ -346,44 +354,33 @@ void krt::Application::LoadAssets()
     m_Indices = commandBuffer.CreateIndexBuffer(indices, { EGraphicsQueue });
 
     printf("Loading test texture.\n");
-    m_Texture = commandBuffer.CreateTextureFromFile("../../../../Assets/Textures/debugTex.png", {EGraphicsQueue});
+    m_Texture = commandBuffer.CreateTextureFromFile("../../../../Assets/Textures/debugTex.png", { EGraphicsQueue });
+    m_Normals = commandBuffer.CreateTextureFromFile("../../../../Assets/Textures/NormalMap.png", {EGraphicsQueue});
+
     auto samplerInfo = Sampler::CreateInfo::CreateDefault();
     m_Sampler = std::make_unique<Sampler>(*m_ServiceLocator, samplerInfo);
 
-    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
+    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
+    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/NormalTangentTest.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/CrowdKing/JL.gltf");
-    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Lantern/Lantern.gltf");
+    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Lantern/Lantern.gltf");
+    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/TwoSidedPlane.gltf");
 
     m_Duccc = res->GetMesh();
     m_Sponza = res->GetScene();
+    //m_Sponza->m_StaticMeshes[0]->m_Transform->Rotate(glm::vec3(0.0f, 1.0f, 0.0f), 90.0f);
 
-    auto light = m_Sponza->AddPointLight();
+    m_Light = m_Sponza->AddPointLight();
 
-    light->SetPosition(glm::vec3(0.0f, 15.0f, 0.0f));
-
-    m_Mat = std::make_unique<Material>();
-    m_Mat->SetSampler(*m_Sampler);
-    m_Mat->SetDiffuseTexture(*m_Texture);
+    m_Light->SetPosition(glm::vec3(0.0f, 5.0f, 100.0f));
 
     commandBuffer.Submit();
-    printf("Baking descriptor sets.\n");
-    glm::vec3 v = { 0.0f, 0.0f, 0.0f };
-    std::set<ECommandQueueType> queues = {EGraphicsQueue};
-    //m_FrontTriangleSet = std::make_unique<DescriptorSet>(*m_ServiceLocator, *m_GraphicsPipeline, 0u, queues);
-
-    v = { 0.0f, 0.5f, 0.1f };
-
-    //m_BackTriangleSet = std::make_unique<DescriptorSet>(*m_ServiceLocator, *m_GraphicsPipeline, 0u, queues);
 
     m_Camera = std::make_unique<Camera>();
     m_Camera->SetPosition(glm::vec3(0.0f, 0.0f, -5.0f));
     m_Camera->SetAspectRatio(m_Window->GetAspectRatio());
     m_Camera->SetFarClipDistance(150.0f);
     m_Sponza->m_ActiveCamera = m_Camera.get();
-
-    m_Transform = std::make_unique<Transform>();
-    m_Transform->SetScale(glm::vec3(1.0250f));
-    m_Transform->SetScale(glm::vec3(0.0250f));
 
     transferQueue.Flush();
 
@@ -396,6 +393,8 @@ void krt::Application::DrawFrame()
     //vkAcquireNextImageKHR(m_VkLogicalDevice, m_SwapChain, std::numeric_limits<uint64_t>::max(), m_ImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
     auto frameInfo = m_Window->GetNextFrameInfo(m_ImageAvailableSemaphore);
+    ImGui::ShowDemoWindow();
+
 
     auto screenSize = m_Window->GetScreenSize();
 
@@ -424,11 +423,14 @@ void krt::Application::DrawFrame()
 
     static float time = 0.0f;
     time += 1.0f / 60.0f;
+    //m_Sponza->m_StaticMeshes[0]->m_Transform->Rotate(glm::vec3(0.0f, 1.0f, 0.0f), 15.0f * 1.0f / 60.0f);
 
     glm::mat4 cameraMatrix = m_Camera->GetCameraMatrix();
-    glm::mat4 viewMatrix = m_Camera->GetViewMatrix();
 
     commandBuffer.SetDescriptorSet(m_Sponza->GetLightsDescriptorSet(), 1);
+
+    //m_Light->SetPosition(m_Camera->GetPosition());
+
     for (auto& mesh : m_Sponza->m_StaticMeshes)
     {
         auto& m = *mesh;
@@ -437,7 +439,7 @@ void krt::Application::DrawFrame()
         Mats mats;
 
         mats.m_MVP = cameraMatrix * mesh->m_Transform->GetTransformationMatrix();
-        mats.m_WorldView = viewMatrix * mesh->m_Transform->GetTransformationMatrix();
+        mats.m_World = mesh->m_Transform->GetTransformationMatrix();
 
         mvp = cameraMatrix * mesh->m_Transform->GetTransformationMatrix();
         commandBuffer.PushConstant(mats, 0);
@@ -448,6 +450,7 @@ void krt::Application::DrawFrame()
             commandBuffer.SetVertexBuffer(*primitive.m_Positions, 1);
             commandBuffer.SetVertexBuffer(*primitive.m_VertexColors, 2);
             commandBuffer.SetVertexBuffer(*primitive.m_Normals, 3);
+            commandBuffer.SetVertexBuffer(*primitive.m_Tangents, 4);
 
             if (primitive.m_Material)
             {
@@ -467,12 +470,19 @@ void krt::Application::DrawFrame()
         }
     }
 
+    glm::vec3 v = m_Light->GetPosition();
+
+    ImGui::Begin("Debug");
+    ImGui::DragFloat3("Light Position", &v[0]);
+    ImGui::End();
+    m_Light->SetPosition(v);
 
     commandBuffer.EndRenderPass();
-    commandBuffer.AddSignalSemaphore(m_RenderFinishedSemaphore);
     commandBuffer.AddWaitSemaphore(m_ImageAvailableSemaphore);
     commandBuffer.SetWaitStages(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     commandBuffer.Submit();
+
+    m_ImGui->Display(frameInfo.m_ImageView, {m_RenderFinishedSemaphore});
 
     auto& presentQueue = m_ServiceLocator->m_LogicalDevice->GetCommandQueue(EPresentQueue);
     std::vector<VkSemaphore> presentSemaphores;
@@ -495,6 +505,11 @@ VkBool32 krt::Application::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT 
     printf("\nValidation layer: %s\n\n", a_CallbackData->pMessage);
 
     return VK_FALSE;
+}
+
+void krt::Application::InitializeImGui()
+{
+    m_ImGui = std::make_unique<VkImGui>(*m_ServiceLocator, *m_ForwardRenderPass);
 }
 
 

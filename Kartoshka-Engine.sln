@@ -5,10 +5,13 @@ VisualStudioVersion = 16.0.29215.179
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Kartoshka-Engine", "Kartoshka-Engine\Kartoshka-Engine.vcxproj", "{C6D743F0-7A97-4068-A10D-03779B7FB8C2}"
 	ProjectSection(ProjectDependencies) = postProject
+		{0059B258-AFD1-40A0-A0B9-BB736413D504} = {0059B258-AFD1-40A0-A0B9-BB736413D504}
 		{734B43C3-F9B8-4D22-AC4D-364DC0217127} = {734B43C3-F9B8-4D22-AC4D-364DC0217127}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Kartoshka-Shaders", "Kartoshka-Shaders\Kartoshka-Shaders.vcxproj", "{734B43C3-F9B8-4D22-AC4D-364DC0217127}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImGui", "ImGui\ImGui.vcxproj", "{0059B258-AFD1-40A0-A0B9-BB736413D504}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -34,6 +37,14 @@ Global
 		{734B43C3-F9B8-4D22-AC4D-364DC0217127}.Release|x64.Build.0 = Release|x64
 		{734B43C3-F9B8-4D22-AC4D-364DC0217127}.Release|x86.ActiveCfg = Release|Win32
 		{734B43C3-F9B8-4D22-AC4D-364DC0217127}.Release|x86.Build.0 = Release|Win32
+		{0059B258-AFD1-40A0-A0B9-BB736413D504}.Debug|x64.ActiveCfg = Debug|x64
+		{0059B258-AFD1-40A0-A0B9-BB736413D504}.Debug|x64.Build.0 = Debug|x64
+		{0059B258-AFD1-40A0-A0B9-BB736413D504}.Debug|x86.ActiveCfg = Debug|Win32
+		{0059B258-AFD1-40A0-A0B9-BB736413D504}.Debug|x86.Build.0 = Debug|Win32
+		{0059B258-AFD1-40A0-A0B9-BB736413D504}.Release|x64.ActiveCfg = Release|x64
+		{0059B258-AFD1-40A0-A0B9-BB736413D504}.Release|x64.Build.0 = Release|x64
+		{0059B258-AFD1-40A0-A0B9-BB736413D504}.Release|x86.ActiveCfg = Release|Win32
+		{0059B258-AFD1-40A0-A0B9-BB736413D504}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

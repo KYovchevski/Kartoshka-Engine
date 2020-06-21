@@ -47,6 +47,8 @@ namespace krt
         float GetAspectRatio() const;
         std::string GetWindowTitle() const;
         VkRect2D GetScreenRenderArea() const;
+        uint32_t GetMinImageCount() const { return m_MinImageCount; }
+        uint32_t GetImageCount() const { return m_ImageCount; }
 
         bool ShouldClose() const;
         void PollEvents();
@@ -72,6 +74,9 @@ namespace krt
         VkSwapchainKHR  m_VkSwapChain;
         VkFormat        m_SwapChainFormat;
         VkExtent2D      m_SwapChainExtent;
+
+        uint32_t m_MinImageCount;
+        uint32_t m_ImageCount;
 
         std::vector<VkImage>        m_SwapChainImages;
         std::vector<VkImageView>    m_SwapChainImageViews;

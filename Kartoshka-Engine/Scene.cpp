@@ -41,11 +41,7 @@ krt::DescriptorSet& krt::Scene::GetLightsDescriptorSet() const
             glm::vec3 m_Color;
         } light;
 
-        glm::vec3 p = m_PointLights[0]->GetPosition();
-        glm::vec4 viewPos = glm::vec4(p[0], p[1], p[2], 1.0f) * m_ActiveCamera->GetViewMatrix();
-
-        light.m_Position = glm::vec3(viewPos[0], viewPos[1], viewPos[2]);
-        //light.m_Position = p;
+        light.m_Position = m_PointLights[0]->GetPosition();
         light.m_Color = m_PointLights[0]->GetColor();
 
         m_LightsDescriptorSetDirty = false;

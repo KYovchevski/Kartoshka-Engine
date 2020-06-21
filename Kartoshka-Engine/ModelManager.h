@@ -82,8 +82,9 @@ namespace krt
 
         std::map<std::string, GLTFResource> m_LoadedGLTFs;
 
-        std::unique_ptr<Sampler> m_DefaultSampler;
-        std::unique_ptr<Texture> m_DefaultDiffuse;
+        std::shared_ptr<Sampler> m_DefaultSampler;
+        std::shared_ptr<Texture> m_DefaultDiffuse;
+        std::shared_ptr<Texture> m_DefaultNormalMap;
 
     };
 

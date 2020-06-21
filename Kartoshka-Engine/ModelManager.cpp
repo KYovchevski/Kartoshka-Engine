@@ -30,6 +30,10 @@ krt::ModelManager::ModelManager(ServiceLocator& a_Services)
 
     m_DefaultDiffuse = commandBuffer.CreateTextureFromFile("../../../../Assets/Textures/DiffuseDefault.png", { EGraphicsQueue });
 
+    glm::vec4 defNormal(0.5f, 0.5f, 1.0f, 1.0f);
+
+    m_DefaultNormalMap = commandBuffer.CreateTexture(&defNormal[0], glm::uvec2(1, 1), 4, 1, { EGraphicsQueue });
+
     commandBuffer.Submit();
 
 }
@@ -85,6 +89,10 @@ std::vector<std::shared_ptr<krt::Mesh>> krt::ModelManager::LoadMeshes(fx::gltf::
                 {
                     prim.m_Normals = LoadVertexBuffer<glm::vec3>(a_Doc, attribute.second);
                 }
+                else if (attribute.first == "TANGENT")
+                {
+                    prim.m_Tangents = LoadVertexBuffer<glm::vec4>(a_Doc, attribute.second);
+                }
             }
             prim.m_IndexBuffer = LoadIndexBuffer(a_Doc, fxPrimitive.indices);
 
@@ -134,7 +142,7 @@ void krt::ModelManager::LoadNode(fx::gltf::Document& a_Doc, GLTFResource& a_Res,
     GetNodeTransform(node, local);
     local.SetPosition(pos);
 
-    auto worldTransform = local * a_NodeParent;
+    auto worldTransform = a_NodeParent * local;
 
     if (node.mesh != -1)
     {
@@ -159,12 +167,15 @@ void krt::ModelManager::GetNodeTransform(fx::gltf::Node& a_Node, Transform& a_Tr
         glm::mat4 glmMat = glm::mat4(0);
         memcpy(&glmMat[0], &mat[0], mat.size() * sizeof(float));
 
+        glmMat[3][0] *= -1.0f;
+        //glmMat[3][3] *= -1.0f;
         a_Transform = glmMat;
-
+       
     }
+    else
     {
         // Get the transformation based on the TRS provided in the file
-        glm::vec3 pos(a_Node.translation[0], a_Node.translation[1], a_Node.translation[2]);
+        glm::vec3 pos(-a_Node.translation[0], a_Node.translation[1], a_Node.translation[2]);
         glm::quat rot(a_Node.rotation[3], a_Node.rotation[0], a_Node.rotation[1], a_Node.rotation[2]);
         glm::vec3 scale(a_Node.scale[0], a_Node.scale[1], a_Node.scale[2]);
 
@@ -183,17 +194,23 @@ std::vector<std::shared_ptr<krt::Material>> krt::ModelManager::LoadMaterials(fx:
         mat->SetSampler(*m_DefaultSampler);
         if (!material.pbrMetallicRoughness.baseColorTexture.empty())
         {
-            mat->SetDiffuseTexture(*a_Res.m_LoadedTextures[material.pbrMetallicRoughness.baseColorTexture.index]);
+            mat->SetDiffuseTexture(a_Res.m_LoadedTextures[material.pbrMetallicRoughness.baseColorTexture.index]);
         }
         else
         {
-            mat->SetDiffuseTexture(*m_DefaultDiffuse);
+            mat->SetDiffuseTexture(m_DefaultDiffuse);
         }
 
         glm::vec4 diffuse = glm::vec4(material.pbrMetallicRoughness.baseColorFactor[0], material.pbrMetallicRoughness.baseColorFactor[1],
             material.pbrMetallicRoughness.baseColorFactor[2], material.pbrMetallicRoughness.baseColorFactor[3]);
 
         mat->SetDiffuseColor(diffuse);
+
+        if (!material.normalTexture.empty())
+            mat->SetNormalMap(a_Res.m_LoadedTextures[material.normalTexture.index]);
+        else
+            mat->SetNormalMap(m_DefaultNormalMap);
+
 
     }
     return materials;
@@ -209,7 +226,7 @@ std::vector<std::shared_ptr<krt::Texture>> krt::ModelManager::LoadTextures(fx::g
 
     for (auto& image : a_Doc.images)
     {
-        // Don't want to support embedded textures yet, throw and assert if it's an embedded texture
+        // Don't want to support embedded textures yet, assert if it's an embedded texture
         assert(image.IsEmbeddedResource() || !image.uri.empty());
 
         auto texPath = a_Filepath + "/../" + image.uri;

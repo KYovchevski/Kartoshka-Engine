@@ -38,7 +38,11 @@ void krt::Window::InitializeSwapchain()
     auto presentMode = hlp::ChoosePresentMode(swapChainDetails.m_PresentModes);
     auto extent = hlp::ChooseSwapChainExtent(swapChainDetails.m_SurfaceCapabilities, m_ScreenSize.x, m_ScreenSize.y);
 
+    m_MinImageCount = swapChainDetails.m_SurfaceCapabilities.minImageCount;
+
     uint32_t imageCount = swapChainDetails.m_SurfaceCapabilities.minImageCount + 1;
+
+    m_ImageCount = imageCount;
     if (swapChainDetails.m_SurfaceCapabilities.maxImageCount > 0 && imageCount > swapChainDetails.m_SurfaceCapabilities.maxImageCount)
         imageCount = swapChainDetails.m_SurfaceCapabilities.maxImageCount;
 

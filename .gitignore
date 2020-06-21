@@ -41,6 +41,7 @@ Build
 # All static libs
 #Dependencies/Libs
 
+Dependencies/Libs/ImGui/*.lib
 
 
 !Dependencies/Libs/glfw/glfw3.lib
@@ -70,3 +71,5 @@ Dependencies/Libs/Vulkan/SPIRV-Tools.lib
 Dependencies/Libs/Vulkan/SPIRV.lib
 Dependencies/Libs/Vulkan/SPVRemapper.lib
 Dependencies/Libs/Vulkan/VkLayer_utils.lib
+x64/Debug/ImGui.pdb
+x64/Debug/ImGui.lib

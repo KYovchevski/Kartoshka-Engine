@@ -27,6 +27,8 @@ namespace krt
     class Material;
     class Scene;
     struct Mesh;
+    class PointLight;
+    class VkImGui;
 
     class Camera;
     class Transform;
@@ -99,6 +101,8 @@ namespace krt
 
     private:
 
+        void InitializeImGui();
+
         void ProcessInput();
 
         uint32_t                        m_WindowWidth;
@@ -121,6 +125,7 @@ namespace krt
 
         std::unique_ptr<RenderPass>     m_ForwardRenderPass;
         std::unique_ptr<GraphicsPipeline> m_GraphicsPipeline;
+        std::unique_ptr<VkImGui>        m_ImGui;
 
         std::unique_ptr<VertexBuffer>   m_TriangleVertexBuffer;
         std::unique_ptr<VertexBuffer>   m_TexCoords;
@@ -128,6 +133,7 @@ namespace krt
 
         std::unique_ptr<Sampler>        m_Sampler;
         std::unique_ptr<Texture>        m_Texture;
+        std::unique_ptr<Texture>        m_Normals;
 
         std::unique_ptr<Material>       m_Mat;
 
@@ -140,6 +146,8 @@ namespace krt
         std::unique_ptr<Transform>      m_Transform;
 
         std::shared_ptr<Mesh>           m_Duccc;
+
+        PointLight*                     m_Light;
 
         std::shared_ptr<Scene>          m_Sponza;
     };

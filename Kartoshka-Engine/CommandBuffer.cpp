@@ -41,6 +41,7 @@ void krt::CommandBuffer::Reset()
 {
     m_WaitSemaphores.clear();
     m_SignalSemaphores.clear();
+    m_WaitStages = 0;
 
     for (auto& descriptorSetAllocation : m_IntermediateDescriptorSetAllocations)
         descriptorSetAllocation.reset();

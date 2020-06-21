@@ -26,9 +26,15 @@ void krt::Material::SetSampler(const Sampler& a_NewSampler)
     m_DescriptorSetDirty = true;
 }
 
-void krt::Material::SetDiffuseTexture(const Texture& a_NewDiffuseTexture)
+void krt::Material::SetDiffuseTexture(const std::shared_ptr<Texture> a_NewDiffuseTexture)
 {
-    m_DiffuseTexture = &a_NewDiffuseTexture;
+    m_DiffuseTexture = a_NewDiffuseTexture;
+    m_DescriptorSetDirty = true;
+}
+
+void krt::Material::SetNormalMap(const std::shared_ptr<Texture> a_NewNormalMap)
+{
+    m_NormalMap = a_NewNormalMap;
     m_DescriptorSetDirty = true;
 }
 
@@ -62,6 +68,7 @@ void krt::Material::BuildDescriptorSet() const
     m_DescriptorSet->SetSampler(*m_Sampler, 0);
     m_DescriptorSet->SetTexture(*m_DiffuseTexture, 1);
     m_DescriptorSet->SetUniformBuffer(m_DiffuseColor, 2);
+    m_DescriptorSet->SetTexture(*m_NormalMap, 3);
     m_DescriptorSetDirty = false;
 }
 
