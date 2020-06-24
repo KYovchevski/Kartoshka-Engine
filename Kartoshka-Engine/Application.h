@@ -105,6 +105,8 @@ namespace krt
 
         void ProcessInput();
 
+        static void FocusCallback(GLFWwindow* a_Window, int a_Focus);
+
         uint32_t                        m_WindowWidth;
         uint32_t                        m_WindowHeight;
         std::string                     m_WindowTitle;
@@ -133,6 +135,8 @@ namespace krt
         PointLight*                     m_Light;
 
         std::shared_ptr<Scene>          m_Sponza;
+
+        bool                            m_InFocus;
     };
 
     

@@ -37,6 +37,9 @@
 #include <set>
 #include <array>
 
+// Global pointer to the application so that the focus function can find it
+krt::Application* g_Application;
+
 struct Mats
 {
     glm::mat4 m_World;
@@ -48,8 +51,9 @@ krt::Application::Application()
     , m_WindowWidth(0)
     , m_WindowHeight(0)
     , m_WindowTitle("Untitled")
+    , m_InFocus(true)
 {
-
+    g_Application = this;
 }
 
 krt::Application::~Application()
@@ -79,8 +83,10 @@ void krt::Application::Run(const InitializationInfo& a_Info)
 
     while (!m_Window->ShouldClose())
     {
-        ProcessInput();
         m_Window->PollEvents();
+        if (!m_InFocus)
+            continue;
+        ProcessInput();
         DrawFrame();
     }
 
@@ -155,6 +161,8 @@ void krt::Application::InitializeVulkan(const InitializationInfo& a_Info)
     LoadAssets();
 
     InitializeImGui();
+
+    glfwSetWindowFocusCallback(m_Window->GetGLFWwindow(), FocusCallback);
 }
 
 void krt::Application::SetupDebugMessenger()
@@ -318,7 +326,6 @@ void krt::Application::LoadAssets()
     printf("Loading assets\n");
 
     auto& transferQueue = m_LogicalDevice->GetCommandQueue(ETransferQueue);
-    auto& commandBuffer = transferQueue.GetSingleUseCommandBuffer();
 
     auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/NormalTangentTest.gltf");
@@ -327,13 +334,8 @@ void krt::Application::LoadAssets()
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/TwoSidedPlane.gltf");
 
     m_Sponza = res->GetScene();
-    //m_Sponza->m_StaticMeshes[0]->m_Transform->SetScale(glm::vec3(0.0025f));
 
     m_Light = m_Sponza->AddPointLight();
-
-    //m_Light->SetPosition(glm::vec3(0.0f, 5.0f, 100.0f));
-
-    commandBuffer.Submit();
 
     m_Camera = std::make_unique<Camera>();
     m_Camera->SetPosition(glm::vec3(0.0f, 0.0f, -5.0f));
@@ -349,8 +351,6 @@ void krt::Application::LoadAssets()
 void krt::Application::DrawFrame()
 {
     auto frameInfo = m_Window->GetNextFrameInfo(m_ImageAvailableSemaphore);
-    ImGui::ShowDemoWindow();
-
 
     auto screenSize = m_Window->GetScreenSize();
 
@@ -518,4 +518,12 @@ void krt::Application::ProcessInput()
     {
         m_Camera->Rotate(glm::vec3(0.0f, -30.0f * 1.0f / 60.0f, 0.0f));
     };
+}
+
+void krt::Application::FocusCallback(GLFWwindow*, int a_Focus)
+{
+    if (a_Focus == GLFW_TRUE)
+        g_Application->m_InFocus = true;
+    else
+        g_Application->m_InFocus = false;
 }

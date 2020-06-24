@@ -98,6 +98,7 @@ krt::Window::NextFrameInfo krt::Window::GetNextFrameInfo(VkSemaphore a_Semaphore
     NextFrameInfo info;
 
     vkAcquireNextImageKHR(m_Services.m_LogicalDevice->GetVkDevice(), m_VkSwapChain, std::numeric_limits<uint64_t>::max(), a_SemaphoreToSignal, a_FenceToSignal, &info.m_FrameIndex);
+
     info.m_ImageView = m_SwapChainImageViews[info.m_FrameIndex];
     return info;
 }
