@@ -65,6 +65,8 @@ namespace krt
         std::vector<std::shared_ptr<Mesh>> LoadMeshes(fx::gltf::Document& a_Doc, GLTFResource& a_Res);
         std::vector<std::shared_ptr<Scene>> LoadScenes(fx::gltf::Document& a_Doc, GLTFResource& a_Res);
 
+        std::unique_ptr<VertexBuffer> GenerateTangents(std::vector<uint8_t>& a_PositionData, std::vector<uint8_t>& a_TexData, std::vector<uint32_t>& a_Indices);
+
         void LoadNode(fx::gltf::Document& a_Doc, GLTFResource& a_Res, int32_t a_NodeIndex, const Transform& a_NodeParent,
                       Scene& a_Scene);
 
@@ -74,6 +76,7 @@ namespace krt
         std::unique_ptr<VertexBuffer> LoadVertexBuffer(fx::gltf::Document& a_Doc, int32_t a_AccessorIndex) const;
         std::unique_ptr<VertexBuffer> MakeVertexBuffer(std::vector<uint8_t>& a_Data, uint32_t a_AttributeSize) const;
 
+        std::vector<uint32_t> LoadIndices(fx::gltf::Document& a_Doc, int32_t a_AccessorIndex);
         std::unique_ptr<IndexBuffer> LoadIndexBuffer(fx::gltf::Document& a_Doc, int32_t a_AccessorIndex);
 
         std::vector<uint8_t> LoadRawData(fx::gltf::Document& a_Doc, int32_t a_AccessorIndex) const;

@@ -117,6 +117,7 @@ namespace krt
         std::unique_ptr<ServiceLocator> m_ServiceLocator;
 
         std::unique_ptr<Window>         m_Window;
+        std::unique_ptr<DepthBuffer>    m_DepthBuffer;
 
         std::unique_ptr<PhysicalDevice> m_PhysicalDevice;
         std::unique_ptr<LogicalDevice>  m_LogicalDevice;
@@ -127,25 +128,7 @@ namespace krt
         std::unique_ptr<GraphicsPipeline> m_GraphicsPipeline;
         std::unique_ptr<VkImGui>        m_ImGui;
 
-        std::unique_ptr<VertexBuffer>   m_TriangleVertexBuffer;
-        std::unique_ptr<VertexBuffer>   m_TexCoords;
-        std::unique_ptr<IndexBuffer>    m_Indices;
-
-        std::unique_ptr<Sampler>        m_Sampler;
-        std::unique_ptr<Texture>        m_Texture;
-        std::unique_ptr<Texture>        m_Normals;
-
-        std::unique_ptr<Material>       m_Mat;
-
-        std::unique_ptr<DepthBuffer>    m_DepthBuffer;
-
-        std::unique_ptr<DescriptorSet>  m_FrontTriangleSet;
-        std::unique_ptr<DescriptorSet>  m_BackTriangleSet;
-
         std::unique_ptr<Camera>         m_Camera;
-        std::unique_ptr<Transform>      m_Transform;
-
-        std::shared_ptr<Mesh>           m_Duccc;
 
         PointLight*                     m_Light;
 

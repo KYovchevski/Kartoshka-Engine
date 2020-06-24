@@ -59,7 +59,6 @@ krt::Application::~Application()
     ThrowIfFailed(vkext::DestroyDebugUtilsMessengerEXT(m_LogicalDevice->GetVkInstance(), m_VkDebugMessenger, nullptr));
 #endif
 
-    m_TriangleVertexBuffer.reset();
     vkDestroySemaphore(m_LogicalDevice->GetVkDevice(), m_ImageAvailableSemaphore, m_ServiceLocator->m_AllocationCallbacks);
     vkDestroySemaphore(m_LogicalDevice->GetVkDevice(), m_RenderFinishedSemaphore, m_ServiceLocator->m_AllocationCallbacks);
 
@@ -318,61 +317,21 @@ void krt::Application::LoadAssets()
 {
     printf("Loading assets\n");
 
-    std::vector<glm::vec3> positions = 
-    {
-        {0.0f, 0.5f, 0.0f},
-        {0.5f, -0.0f, 0.0f},
-        {-0.5f, -0.0f, 0.0f},
-        {0.0f, -0.5f, 0.0f}
-    };
-
-    std::vector<uint16_t> indices =
-    {
-        0, 2, 1,
-        1, 2, 3
-    };
-
-    std::vector<glm::vec2> tex =
-    {
-        {0.0f, 0.0f},
-        {1.0f, 0.0f},
-        {0.0f, 1.0f},
-        {1.0f, 1.0f}
-    };
-
     auto& transferQueue = m_LogicalDevice->GetCommandQueue(ETransferQueue);
     auto& commandBuffer = transferQueue.GetSingleUseCommandBuffer();
 
-
-
-    printf("Creating vertex buffers.\n");
-    commandBuffer.Begin();
-    m_TriangleVertexBuffer = commandBuffer.CreateVertexBuffer(positions, { EGraphicsQueue });
-    m_TexCoords = commandBuffer.CreateVertexBuffer(tex, { EGraphicsQueue });
-
-    printf("Creating index buffer.\n");
-    m_Indices = commandBuffer.CreateIndexBuffer(indices, { EGraphicsQueue });
-
-    printf("Loading test texture.\n");
-    m_Texture = commandBuffer.CreateTextureFromFile("../../../../Assets/Textures/debugTex.png", { EGraphicsQueue });
-    m_Normals = commandBuffer.CreateTextureFromFile("../../../../Assets/Textures/NormalMap.png", {EGraphicsQueue});
-
-    auto samplerInfo = Sampler::CreateInfo::CreateDefault();
-    m_Sampler = std::make_unique<Sampler>(*m_ServiceLocator, samplerInfo);
-
-    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
+    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/NormalTangentTest.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/CrowdKing/JL.gltf");
-    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Lantern/Lantern.gltf");
+    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Lantern/Lantern.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/TwoSidedPlane.gltf");
 
-    m_Duccc = res->GetMesh();
     m_Sponza = res->GetScene();
-    //m_Sponza->m_StaticMeshes[0]->m_Transform->Rotate(glm::vec3(0.0f, 1.0f, 0.0f), 90.0f);
+    //m_Sponza->m_StaticMeshes[0]->m_Transform->SetScale(glm::vec3(0.0025f));
 
     m_Light = m_Sponza->AddPointLight();
 
-    m_Light->SetPosition(glm::vec3(0.0f, 5.0f, 100.0f));
+    //m_Light->SetPosition(glm::vec3(0.0f, 5.0f, 100.0f));
 
     commandBuffer.Submit();
 
@@ -389,9 +348,6 @@ void krt::Application::LoadAssets()
 
 void krt::Application::DrawFrame()
 {
-    //uint32_t imageIndex;
-    //vkAcquireNextImageKHR(m_VkLogicalDevice, m_SwapChain, std::numeric_limits<uint64_t>::max(), m_ImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-
     auto frameInfo = m_Window->GetNextFrameInfo(m_ImageAvailableSemaphore);
     ImGui::ShowDemoWindow();
 
@@ -421,15 +377,9 @@ void krt::Application::DrawFrame()
     commandBuffer.SetViewport(viewport);
     commandBuffer.BindPipeline(*m_GraphicsPipeline);
 
-    static float time = 0.0f;
-    time += 1.0f / 60.0f;
-    //m_Sponza->m_StaticMeshes[0]->m_Transform->Rotate(glm::vec3(0.0f, 1.0f, 0.0f), 15.0f * 1.0f / 60.0f);
-
     glm::mat4 cameraMatrix = m_Camera->GetCameraMatrix();
 
     commandBuffer.SetDescriptorSet(m_Sponza->GetLightsDescriptorSet(), 1);
-
-    //m_Light->SetPosition(m_Camera->GetPosition());
 
     for (auto& mesh : m_Sponza->m_StaticMeshes)
     {
@@ -446,17 +396,17 @@ void krt::Application::DrawFrame()
 
         for (auto& primitive : m->m_Primitives)
         {
+
             commandBuffer.SetVertexBuffer(*primitive.m_TexCoords, 0);
             commandBuffer.SetVertexBuffer(*primitive.m_Positions, 1);
             commandBuffer.SetVertexBuffer(*primitive.m_VertexColors, 2);
-            commandBuffer.SetVertexBuffer(*primitive.m_Normals, 3);
+            commandBuffer.SetVertexBuffer(*primitive.m_Normals, 3);          
             commandBuffer.SetVertexBuffer(*primitive.m_Tangents, 4);
 
             if (primitive.m_Material)
             {
                 commandBuffer.SetMaterial(*primitive.m_Material, 0);
             }
-
 
             if (primitive.m_IndexBuffer)
             {
@@ -470,12 +420,6 @@ void krt::Application::DrawFrame()
         }
     }
 
-    glm::vec3 v = m_Light->GetPosition();
-
-    ImGui::Begin("Debug");
-    ImGui::DragFloat3("Light Position", &v[0]);
-    ImGui::End();
-    m_Light->SetPosition(v);
 
     commandBuffer.EndRenderPass();
     commandBuffer.AddWaitSemaphore(m_ImageAvailableSemaphore);
@@ -487,7 +431,19 @@ void krt::Application::DrawFrame()
     auto& presentQueue = m_ServiceLocator->m_LogicalDevice->GetCommandQueue(EPresentQueue);
     std::vector<VkSemaphore> presentSemaphores;
     presentSemaphores.push_back(m_RenderFinishedSemaphore);
+
+    // Can do all ImGui after the present call, since at this point the CPU is already waiting for the GPU due to the lack of good management on my end.
     m_Window->Present(frameInfo.m_FrameIndex, presentQueue, presentSemaphores);
+    glm::vec3 v = m_Light->GetPosition();
+    glm::vec3 c = m_Light->GetColor();
+
+    ImGui::Begin("Debug");
+    ImGui::DragFloat3("Light Position", &v[0]);
+    ImGui::ColorEdit3("Light Color", &c[0], ImGuiColorEditFlags_Float);
+    ImGui::End();
+    m_Light->SetPosition(v);
+    m_Light->SetColor(c);
+
     presentQueue.Flush();
 }
 

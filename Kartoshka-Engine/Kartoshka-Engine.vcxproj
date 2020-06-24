@@ -200,6 +200,7 @@
     <ClInclude Include="StaticMesh.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Transform.h" />
+    <ClInclude Include="VectorView.h" />
     <ClInclude Include="VertexBuffer.h" />
     <ClInclude Include="VkConstants.h" />
     <ClInclude Include="VkHelpers.h" />

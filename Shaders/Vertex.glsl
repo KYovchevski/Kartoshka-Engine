@@ -32,21 +32,18 @@ mat3x3 CalculateTBN(vec4 a_Tangent, vec3 a_Normal)
 	vec3 T = normalize((vec4(a_Tangent.xyz, 0.0f) * WorldToLocal).xyz);
 	vec3 N = normalize((vec4(a_Normal, 0.0f) *		WorldToLocal).xyz);
 
-	vec3 B = -cross(T, N);
+	vec3 B = normalize(cross(T, N));
 
 	return inverse(mat3x3(T, B, N));
 }
 
 void main() 
 {
-
 	o_Tex = i_Tex;
 	o_Color = i_Color;
-	o_WorldPosition = (vec4(i_Pos, 1.0f) * inverse(u_Push.m_WorldMatrix)).xyz;
+	o_WorldPosition = (vec4(i_Pos, 1.0f) * u_Push.m_WorldMatrix).xyz;
 	o_Normal = normalize(vec4(i_Normal, 0.0f) * inverse((u_Push.m_WorldMatrix))).xyz;
-	//o_Normal = i_Normal;
 	o_TBN = CalculateTBN(i_Tangent, i_Normal);
-
 
 	gl_Position = u_Push.m_MVP * vec4(i_Pos, 1.0f);
 }

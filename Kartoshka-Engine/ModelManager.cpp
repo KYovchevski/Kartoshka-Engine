@@ -13,6 +13,8 @@
 #include "StaticMesh.h"
 #include "Transform.h"
 
+#include "VectorView.h"
+
 #include "FX-GLTF/gltf.h"
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
@@ -68,6 +70,9 @@ std::vector<std::shared_ptr<krt::Mesh>> krt::ModelManager::LoadMeshes(fx::gltf::
     for (auto& fxMesh : a_Doc.meshes)
     {
         auto& mesh = meshes.emplace_back(std::make_shared<Mesh>());
+
+        std::vector<uint8_t> positionsData, texData;
+
         for (auto& fxPrimitive : fxMesh.primitives)
         {
             auto& prim = mesh->m_Primitives.emplace_back();
@@ -75,11 +80,13 @@ std::vector<std::shared_ptr<krt::Mesh>> krt::ModelManager::LoadMeshes(fx::gltf::
             {
                 if (attribute.first == "POSITION")
                 {
-                    prim.m_Positions = LoadVertexBuffer<glm::vec3>(a_Doc, attribute.second);
+                    positionsData = LoadRawData(a_Doc, attribute.second);
+                    prim.m_Positions = MakeVertexBuffer(positionsData, static_cast<uint32_t>(sizeof(glm::vec3)));
                 }
                 else if (attribute.first == "TEXCOORD_0")
                 {
-                    prim.m_TexCoords = LoadVertexBuffer<glm::vec2>(a_Doc, attribute.second);
+                    texData = LoadRawData(a_Doc, attribute.second);
+                    prim.m_TexCoords = MakeVertexBuffer(texData, static_cast<uint32_t>(sizeof(glm::vec2)));
                 }
                 else if (attribute.first == "COLOR_0")
                 {
@@ -97,6 +104,12 @@ std::vector<std::shared_ptr<krt::Mesh>> krt::ModelManager::LoadMeshes(fx::gltf::
             prim.m_IndexBuffer = LoadIndexBuffer(a_Doc, fxPrimitive.indices);
 
             prim.m_Material = a_Res.m_Materials[fxPrimitive.material];
+
+            if (!prim.m_Tangents)
+            {
+                auto indices = LoadIndices(a_Doc, fxPrimitive.indices);
+                prim.m_Tangents = GenerateTangents(positionsData, texData, indices);
+            }
 
             if (!prim.m_VertexColors)
             {
@@ -130,6 +143,89 @@ std::vector<std::shared_ptr<krt::Scene>> krt::ModelManager::LoadScenes(fx::gltf:
 
     return scenes;
 }
+
+std::unique_ptr<krt::VertexBuffer> krt::ModelManager::GenerateTangents(std::vector<uint8_t>& a_PositionData,
+    std::vector<uint8_t>& a_TexData, std::vector<uint32_t>& a_Indices)
+{
+    auto positions = hlp::VectorView<glm::vec3, uint8_t>(a_PositionData);
+    auto tex = hlp::VectorView<glm::vec2, uint8_t>(a_TexData);
+
+    std::vector<glm::vec4> tangents(positions.Size());
+
+    if (!a_Indices.empty())
+    {
+        for (size_t i = 0; i < a_Indices.size(); i += 3)
+        {
+            auto tangent = glm::vec4(1.0f);
+
+            uint32_t i1 = a_Indices[i + 0];
+            uint32_t i2 = a_Indices[i + 1];
+            uint32_t i3 = a_Indices[i + 2];
+
+            glm::vec3 p1 = *positions[i1];
+            glm::vec3 p2 = *positions[i2];
+            glm::vec3 p3 = *positions[i3];
+            glm::vec2 uv1 = *tex[i1];
+            glm::vec2 uv2 = *tex[i2];
+            glm::vec2 uv3 = *tex[i3];
+
+            glm::vec3 edge1 = p2 - p1;
+            glm::vec3 edge2 = p3 - p1;
+            glm::vec2 deltaUV1 = uv2 - uv1;
+            glm::vec2 deltaUV2 = uv3 - uv1;
+
+            float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+            tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+            tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+            tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+
+            tangents[i1] = tangent;
+            tangents[i2] = tangent;
+            tangents[i3] = tangent;
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < positions.Size(); i += 3)
+        {
+            auto tangent = glm::vec4(1.0f);
+
+            uint64_t i1 = i + 0;
+            uint64_t i2 = i + 1;
+            uint64_t i3 = i + 2;
+
+            glm::vec3 p1 = *positions[i1];
+            glm::vec3 p2 = *positions[i2];
+            glm::vec3 p3 = *positions[i3];
+            glm::vec2 uv1 = *tex[i1];
+            glm::vec2 uv2 = *tex[i2];
+            glm::vec2 uv3 = *tex[i3];
+
+            glm::vec3 edge1 = p2 - p1;
+            glm::vec3 edge2 = p3 - p1;
+            glm::vec2 deltaUV1 = uv2 - uv1;
+            glm::vec2 deltaUV2 = uv3 - uv1;
+
+            float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+            tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+            tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+            tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+
+            tangents[i1] = tangent;
+            tangents[i2] = tangent;
+            tangents[i3] = tangent;
+        }
+    }
+    auto& commandBuffer = m_Services.m_LogicalDevice->GetCommandQueue(ETransferQueue).GetSingleUseCommandBuffer();
+    commandBuffer.Begin();
+    auto buffer = commandBuffer.CreateVertexBuffer(tangents, { EGraphicsQueue });
+    commandBuffer.Submit();
+
+    return buffer;
+}
+
 
 void krt::ModelManager::LoadNode(fx::gltf::Document& a_Doc, GLTFResource& a_Res, int32_t a_NodeIndex,
                                  const Transform& a_NodeParent, krt::Scene& a_Scene)
@@ -319,6 +415,48 @@ std::unique_ptr<krt::VertexBuffer> krt::ModelManager::MakeVertexBuffer(std::vect
     commandBuffer.Submit();
 
     return buffer;
+}
+
+std::vector<uint32_t> krt::ModelManager::LoadIndices(fx::gltf::Document& a_Doc, int32_t a_AccessorIndex)
+{
+    if (a_AccessorIndex == -1)
+    {
+        return std::vector<uint32_t>();
+    }
+    auto accessor = a_Doc.accessors[a_AccessorIndex];
+
+    auto indexSize = GetAttributeSize(accessor);
+
+    auto data = LoadRawData(a_Doc, a_AccessorIndex);
+
+    std::vector<uint32_t> indices;
+    indices.reserve(data.size() / indexSize);
+
+    switch (indexSize)
+    {
+    case 1:
+        for (size_t i = 0; i < data.size(); i++)
+            indices.push_back(data[i]);
+        break;
+    case 2:
+        {
+            hlp::VectorView<uint16_t, uint8_t> ushortView(data);
+            for (size_t i = 0; i < ushortView.Size(); i++)
+                indices.push_back(*ushortView[i]);
+            break;
+        }
+    case 4:
+        {
+            hlp::VectorView<uint32_t, uint8_t> uintView(data);
+            for (size_t i = 0; i < uintView.Size(); i++)
+                indices.push_back(*uintView[i]);
+            break;
+        }
+    default:
+        break;
+    }
+
+    return indices;
 }
 
 std::unique_ptr<krt::IndexBuffer> krt::ModelManager::LoadIndexBuffer(fx::gltf::Document& a_Doc, int32_t a_AccessorIndex)

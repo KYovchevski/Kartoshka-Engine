@@ -35,19 +35,12 @@ void main()
 
 	vec3 normal;
 	normal = normalize(sampledNormal * i_TBN);
-	//normal = normalize(i_Normal);
 
 	vec3 toLight = u_PointLight.m_Position - i_WorldPosition;
 	vec3 lightDirection = normalize(toLight);
 
-	float f = dot(normal, lightDirection);
+	float diffuse = dot(normal, lightDirection);
 
 	o_Diffuse = texture(sampler2D(tex, smp), i_TexCoords);
-	o_Diffuse *= u_Material.m_Diffuse * i_Color * f;
-
-	//o_Diffuse = vec4(f);
-
-	//o_Diffuse = vec4(directionToLight * 0.5f + 0.5f, 1.0f);
-	//o_Diffuse = vec4(normal * 0.5f + 0.5f, 1.0f);
-	//o_Diffuse = vec4(i_TBN[1] * 0.5f + 0.5f, 1.0f);
+	o_Diffuse *= u_Material.m_Diffuse * i_Color * diffuse * vec4(u_PointLight.m_Color, 1.0f);
 }
