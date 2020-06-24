@@ -5,7 +5,8 @@ The final product is capable of rendering Sponza with very few visual glitches, 
 
 # Images
 
-*To be added*
+![Render of the scene](https://github.com/KYovchevski/Kartoshka-Engine/tree/master/Assets/Images/sponza.jpg)
+![Render of the lion head in Sponza](https://github.com/KYovchevski/Kartoshka-Engine/tree/master/Assets/Images/sponzaLion.jpg)
 
 # Known issues
 ## Vulkan errors when exiting 
