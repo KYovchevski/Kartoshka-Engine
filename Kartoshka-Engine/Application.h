@@ -29,6 +29,7 @@ namespace krt
     struct Mesh;
     class PointLight;
     class VkImGui;
+    class SemaphoreAllocator;
 
     class Camera;
     class Transform;
@@ -92,7 +93,7 @@ namespace krt
 
         void ParseInitializationInfo(const InitializationInfo& a_Info);
 
-
+        // The callback function used by Vulkan to output validation layer messages to the console
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
             VkDebugUtilsMessageSeverityFlagBitsEXT a_MessageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT a_MessageType,
@@ -123,6 +124,7 @@ namespace krt
 
         std::unique_ptr<PhysicalDevice> m_PhysicalDevice;
         std::unique_ptr<LogicalDevice>  m_LogicalDevice;
+        std::unique_ptr<SemaphoreAllocator> m_SemaphoreAllocator;
 
         std::unique_ptr<ModelManager>   m_ModelManager;
 

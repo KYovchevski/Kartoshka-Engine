@@ -31,7 +31,7 @@ namespace krt
         void SetNormalMap(const std::shared_ptr<Texture> a_NewNormalMap);
         void SetDiffuseColor(const glm::vec4& a_NewDiffuseColor);
 
-        const DescriptorSet& GetDescriptorSet(GraphicsPipeline& a_TargetPipeline, uint32_t a_SetIndex) const;
+        DescriptorSet& GetDescriptorSet(GraphicsPipeline& a_TargetPipeline, uint32_t a_SetIndex);
 
     private:
 

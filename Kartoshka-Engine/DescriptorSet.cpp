@@ -8,6 +8,7 @@
 #include "CommandBuffer.h"
 #include "Sampler.h"
 #include "Texture.h"
+#include "SemaphoreAllocator.h"
 
 krt::DescriptorSet::DescriptorSet(ServiceLocator& a_Services, GraphicsPipeline& a_Pipeline, uint32_t a_SetSlot,
     std::set<ECommandQueueType>& a_QueuesWithAccess)
@@ -25,10 +26,25 @@ krt::DescriptorSet::~DescriptorSet()
         m_DescriptorSetAllocation.reset();
 }
 
-void krt::DescriptorSet::SetUniformBuffer(const void* a_Data, uint32_t a_DataSize, uint32_t a_Binding)
+void krt::DescriptorSet::SetUniformBuffer(const void* a_Data, uint32_t a_DataSize, uint32_t a_Binding, VkPipelineStageFlags a_UsingStage)
 {
     // TODO: Add updating to the buffer if one already exists
-    CreateUniformBuffer(a_Data, a_DataSize, a_Binding);
+    //CreateUniformBuffer(a_Data, a_DataSize, a_Binding);
+
+    SemaphoreWait& semWait = m_SemaphoreWaits.emplace_back();
+    semWait.m_StageFlags = a_UsingStage;
+
+    if (m_Buffers.count(a_Binding) == 0)
+    {
+        // No buffer for this binding exists already
+        semWait.m_Semaphore = CreateUniformBuffer(a_Data, a_DataSize, a_Binding);
+    }
+    else
+    {
+        // A buffer for this binding already exists and can be updated
+
+        semWait.m_Semaphore = UpdateUniformBuffer(a_Data, a_DataSize, a_Binding);
+    }
 }
 
 void krt::DescriptorSet::SetSampler(const Sampler& a_Sampler, uint32_t a_Binding)
@@ -74,23 +90,25 @@ VkDescriptorSet krt::DescriptorSet::operator*() const
 }
 
 
-void krt::DescriptorSet::CreateUniformBuffer(const void* a_Data, uint32_t a_Size, uint32_t a_Binding)
+krt::Semaphore krt::DescriptorSet::CreateUniformBuffer(const void* a_Data, uint32_t a_Size, uint32_t a_Binding)
 {
-    auto staging = m_Services.m_LogicalDevice->CreateBuffer(a_Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_QueuesWithAccess);
-
-    auto buffer = m_Services.m_LogicalDevice->CreateBuffer(a_Size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        auto buffer = m_Services.m_LogicalDevice->CreateBuffer(a_Size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_QueuesWithAccess);
-
-    m_Services.m_LogicalDevice->CopyToDeviceMemory(staging->m_VkDeviceMemory, a_Data, a_Size);
 
     auto& transferQueue = m_Services.m_LogicalDevice->GetCommandQueue(ETransferQueue);
     auto& transferBuffer = transferQueue.GetSingleUseCommandBuffer();
 
+    // The state of the command buffer needs to be tracked to ensure it has been executed before the descriptor set is used
+    auto sem = m_Services.m_SemaphoreAllocator->GetSemaphore();
+
     transferBuffer.Begin();
-    transferBuffer.BufferCopy(*staging, *buffer, a_Size);
+    // Upload to the permanent buffer
+    transferBuffer.UploadToBuffer(a_Data, a_Size, *buffer);
+    transferBuffer.AddSignalSemaphore(sem);
+    transferBuffer.End();
     transferBuffer.Submit();
 
+    // The descriptor set is the owner of the buffer, so it is the holder of the unique_ptr
     m_Buffers[a_Binding] = std::move(buffer);
 
     VkDescriptorBufferInfo bufferInfo = {};
@@ -109,19 +127,32 @@ void krt::DescriptorSet::CreateUniformBuffer(const void* a_Data, uint32_t a_Size
 
     // TODO: Replace this with something that isn't an immediate flush of the command queue
     // Maybe check if the command buffer has finished executing before binding?
-    transferQueue.Flush();
+    //transferQueue.Flush();
 
+    // The descriptor set update does not need to wait for the transfer commands to be executed, so we don't need to synchronize immediately.
     vkUpdateDescriptorSets(m_Services.m_LogicalDevice->GetVkDevice(), 1, &write, 0, nullptr);
-
+    return sem;
 }
 
-void krt::DescriptorSet::UpdateUniformBuffer(const void* a_Data, uint32_t a_Size, uint32_t a_Binding)
+krt::Semaphore krt::DescriptorSet::UpdateUniformBuffer(const void* a_Data, uint32_t a_Size, uint32_t a_Binding)
 {
     a_Binding;
     //TODO: Implement this properly
-    auto staging = m_Services.m_LogicalDevice->CreateBuffer(a_Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_QueuesWithAccess);
 
-    m_Services.m_LogicalDevice->CopyToDeviceMemory(staging->m_VkDeviceMemory, a_Data, a_Size);
-    
+    auto& buffer = m_Buffers[a_Binding];
+
+    // Need to use a command buffer to transfer the data from host visible memory to the more optimized device local memory
+    auto& queue = m_Services.m_LogicalDevice->GetCommandQueue(ETransferQueue);
+    auto& commandBuffer = queue.GetSingleUseCommandBuffer();
+
+    // The command buffer will signal a semaphore so that command buffers dependent on this descriptor set don't use it before it is ready
+    auto sem = m_Services.m_SemaphoreAllocator->GetSemaphore();
+
+    commandBuffer.Begin();
+    commandBuffer.UploadToBuffer(a_Data, a_Size, *buffer);
+    commandBuffer.AddSignalSemaphore(sem);
+    commandBuffer.End();
+    commandBuffer.Submit();
+
+    return sem;
 }   

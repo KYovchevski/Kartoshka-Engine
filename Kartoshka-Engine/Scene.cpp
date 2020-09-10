@@ -45,7 +45,7 @@ krt::DescriptorSet& krt::Scene::GetLightsDescriptorSet() const
         light.m_Color = m_PointLights[0]->GetColor();
 
         m_LightsDescriptorSetDirty = false;
-        m_LightsDescriptorSet->SetUniformBuffer(light, 0);
+        m_LightsDescriptorSet->SetUniformBuffer(light, 0, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     }
 
     return *m_LightsDescriptorSet;

@@ -105,6 +105,9 @@
     <ClCompile Include="ImGui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SemaphoreAllocator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -198,6 +201,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VectorView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SemaphoreAllocator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SemaphoreWait.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -4,6 +4,7 @@
 #include "vulkan/vulkan.h"
 #include <GLFW/glfw3.h>
 #include "glm/vec2.hpp"
+#include "SemaphoreAllocator.h"
 
 #include <string>
 #include <vector>
@@ -38,8 +39,8 @@ namespace krt
 
         void InitializeSwapchain();
 
-        NextFrameInfo GetNextFrameInfo(VkSemaphore a_SemaphoreToSignal, VkFence a_FenceToSignal = VK_NULL_HANDLE);
-        void Present(uint32_t a_FrameToPresentIndex, CommandQueue& a_CommandQueue, std::vector<VkSemaphore>& a_SemaphoresToWait);
+        NextFrameInfo GetNextFrameInfo(Semaphore a_SemaphoreToSignal, VkFence a_FenceToSignal = VK_NULL_HANDLE);
+        void Present(uint32_t a_FrameToPresentIndex, CommandQueue& a_CommandQueue, std::vector<Semaphore>& a_SemaphoresToWait);
 
         VkFormat GetRenderSurfaceFormat() const;
         VkSurfaceKHR GetRenderSurface();

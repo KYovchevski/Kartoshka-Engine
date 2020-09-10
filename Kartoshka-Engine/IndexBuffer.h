@@ -8,7 +8,8 @@ namespace krt
     {
         friend class CommandBuffer;
     public:
-        IndexBuffer(ServiceLocator& a_Services);
+        IndexBuffer(ServiceLocator& a_Services, uint64_t a_InitialSize, VkBufferUsageFlags a_UsageFlags,
+            VkMemoryPropertyFlags a_MemoryPropertyFlags, std::set<ECommandQueueType> a_QueuesWithAccess);
         ~IndexBuffer();
 
         uint32_t GetElementCount() const { return m_NumElements; }

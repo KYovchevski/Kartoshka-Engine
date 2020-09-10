@@ -43,9 +43,25 @@ void krt::CommandQueue::SubmitCommandBuffer(CommandBuffer& a_CommandBuffer)
     a_CommandBuffer.End();
 
     auto buffer = a_CommandBuffer.GetVkCommandBuffer();
-    auto signalSemaphores = std::vector<VkSemaphore>(a_CommandBuffer.GetSignalSemaphores().begin(), a_CommandBuffer.GetSignalSemaphores().end());
-    auto waitSemaphores = std::vector<VkSemaphore>(a_CommandBuffer.GetWaitSemaphores().begin(), a_CommandBuffer.GetWaitSemaphores().end());
-    auto waitStageMask = a_CommandBuffer.GetWaitStagesMask();
+    auto sigSems = a_CommandBuffer.GetSignalSemaphores();
+    std::vector<VkSemaphore> signalSemaphores;
+    for (auto& sem : sigSems)
+    {
+        signalSemaphores.push_back(**sem);
+    }
+
+    auto commandBufferWaitSemaphores = a_CommandBuffer.GetWaitSemaphores();
+
+    std::vector<VkSemaphore> waitSemaphores;
+    waitSemaphores.reserve(commandBufferWaitSemaphores.size());
+    std::vector<VkPipelineStageFlags> waitStageMasks;
+    waitStageMasks.reserve(commandBufferWaitSemaphores.size());
+
+    for (auto& sem : commandBufferWaitSemaphores)
+    {
+        waitSemaphores.push_back(**sem.m_Semaphore);
+        waitStageMasks.push_back(sem.m_StageFlags);
+    }
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -55,7 +71,7 @@ void krt::CommandQueue::SubmitCommandBuffer(CommandBuffer& a_CommandBuffer)
     submitInfo.pSignalSemaphores = signalSemaphores.data();
     submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size());
     submitInfo.pWaitSemaphores = waitSemaphores.data();
-    submitInfo.pWaitDstStageMask = &waitStageMask;
+    submitInfo.pWaitDstStageMask = waitStageMasks.data();
 
     auto fence = GetUnusedFence();
     vkQueueSubmit(m_VkQueue, 1, &submitInfo, fence);

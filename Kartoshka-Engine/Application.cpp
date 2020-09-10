@@ -22,6 +22,7 @@
 #include "StaticMesh.h"
 #include "PointLight.h"
 #include "ImGui.h"
+#include "SemaphoreAllocator.h"
 
 #include "VkHelpers.h"
 
@@ -154,7 +155,8 @@ void krt::Application::InitializeVulkan(const InitializationInfo& a_Info)
     CreateRenderPass();
     CreateGraphicsPipeline();
 
-    CreateSemaphores();
+    m_SemaphoreAllocator = std::make_unique<SemaphoreAllocator>(*m_ServiceLocator);
+    m_ServiceLocator->m_SemaphoreAllocator = m_SemaphoreAllocator.get();
 
     m_ModelManager = std::make_unique<ModelManager>(*m_ServiceLocator);
 
@@ -327,8 +329,9 @@ void krt::Application::LoadAssets()
 
     auto& transferQueue = m_LogicalDevice->GetCommandQueue(ETransferQueue);
 
-    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
-    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/NormalTangentTest.gltf");
+    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
+    //auto res = m_ModelManager->LoadGltf("../../../../Assets/Models/Cube.gltf");
+    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/NormalTangentTest.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/CrowdKing/JL.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Lantern/Lantern.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/TwoSidedPlane.gltf");
@@ -350,7 +353,10 @@ void krt::Application::LoadAssets()
 
 void krt::Application::DrawFrame()
 {
-    auto frameInfo = m_Window->GetNextFrameInfo(m_ImageAvailableSemaphore);
+    auto imageAvailableSem = m_SemaphoreAllocator->GetSemaphore();
+    auto drawFinishedSem = m_SemaphoreAllocator->GetSemaphore();
+
+    auto frameInfo = m_Window->GetNextFrameInfo(imageAvailableSem);
 
     auto screenSize = m_Window->GetScreenSize();
 
@@ -396,7 +402,7 @@ void krt::Application::DrawFrame()
 
         for (auto& primitive : m->m_Primitives)
         {
-
+            
             commandBuffer.SetVertexBuffer(*primitive.m_TexCoords, 0);
             commandBuffer.SetVertexBuffer(*primitive.m_Positions, 1);
             commandBuffer.SetVertexBuffer(*primitive.m_VertexColors, 2);
@@ -422,29 +428,35 @@ void krt::Application::DrawFrame()
 
 
     commandBuffer.EndRenderPass();
-    commandBuffer.AddWaitSemaphore(m_ImageAvailableSemaphore);
-    commandBuffer.SetWaitStages(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    commandBuffer.AddWaitSemaphore(imageAvailableSem, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     commandBuffer.Submit();
 
-    m_ImGui->Display(frameInfo.m_ImageView, {m_RenderFinishedSemaphore});
+    m_ImGui->Display(frameInfo.m_ImageView, { drawFinishedSem });
 
     auto& presentQueue = m_ServiceLocator->m_LogicalDevice->GetCommandQueue(EPresentQueue);
-    std::vector<VkSemaphore> presentSemaphores;
-    presentSemaphores.push_back(m_RenderFinishedSemaphore);
+    std::vector<Semaphore> presentSemaphores;
+    presentSemaphores.push_back(drawFinishedSem);
 
     // Can do all ImGui after the present call, since at this point the CPU is already waiting for the GPU due to the lack of good management on my end.
     m_Window->Present(frameInfo.m_FrameIndex, presentQueue, presentSemaphores);
     glm::vec3 v = m_Light->GetPosition();
     glm::vec3 c = m_Light->GetColor();
+    glm::vec3 p = m_Sponza->m_StaticMeshes[0]->m_Transform->GetPosition();
 
     ImGui::Begin("Debug");
+    ImGui::DragFloat3("Model Position", &p[0]);
     ImGui::DragFloat3("Light Position", &v[0]);
     ImGui::ColorEdit3("Light Color", &c[0], ImGuiColorEditFlags_Float);
     ImGui::End();
     m_Light->SetPosition(v);
     m_Light->SetColor(c);
+    m_Sponza->m_StaticMeshes[0]->m_Transform->SetPosition(p);
 
     presentQueue.Flush();
+}
+
+void krt::Application::Cleanup()
+{
 }
 
 void krt::Application::ParseInitializationInfo(const InitializationInfo& a_Info)

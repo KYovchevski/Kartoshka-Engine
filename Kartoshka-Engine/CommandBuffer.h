@@ -13,6 +13,8 @@
 #include <map>
 
 #include "Framebuffer.h"
+#include "SemaphoreAllocator.h"
+#include "SemaphoreWait.h"
 
 
 namespace krt
@@ -54,9 +56,10 @@ namespace krt
         void End();
         void Submit();
 
-        void AddWaitSemaphore(VkSemaphore a_Semaphore);
-        void AddSignalSemaphore(VkSemaphore a_Semaphore);
-        void SetWaitStages(VkPipelineStageFlags a_WaitStages);
+        // Adds a semaphore that should be signaled once the command buffer's execution is finished
+        void AddSignalSemaphore(Semaphore a_Semaphore);
+        // Adds a semaphore that should be signaled before the execution of the command buffer begins 
+        void AddWaitSemaphore(Semaphore a_Semaphore, VkPipelineStageFlags a_StageFlags);
 
         void BeginRenderPass(RenderPass& a_RenderPass, Framebuffer& a_FrameBuffer, VkRect2D a_RenderArea, VkSubpassContents a_SubpassContents = VK_SUBPASS_CONTENTS_INLINE);
         void EndRenderPass();
@@ -68,7 +71,7 @@ namespace krt
         void SetIndexBuffer(IndexBuffer& a_IndexBuffer, uint32_t a_Offset = 0);
         void BindPipeline(GraphicsPipeline& a_Pipeline);
         
-        void SetDescriptorSet(const DescriptorSet& a_Set, uint32_t a_Slot);
+        void SetDescriptorSet(DescriptorSet& a_Set, uint32_t a_Slot);
         void SetSampler(Sampler& a_Sampler, uint32_t a_Binding, uint32_t a_Set);
         void SetTexture(Texture& a_Texture, uint32_t a_Binding, uint32_t a_Set);
 
@@ -77,9 +80,8 @@ namespace krt
         void Draw(uint32_t a_NumVertices, uint32_t a_NumInstances = 1, uint32_t a_FirstVertex = 0, uint32_t a_FirstInstance = 0);
         void DrawIndexed(uint32_t a_NumIndices, uint32_t a_NumInstances = 1, uint32_t a_FirstIndex = 0, uint32_t a_FirstInstance = 0, uint32_t a_VertexOffset = 0);
 
-        const std::set<VkSemaphore>& GetWaitSemaphores() const { return m_WaitSemaphores; }
-        const std::set<VkSemaphore>& GetSignalSemaphores() const { return m_SignalSemaphores; };
-        const VkPipelineStageFlags GetWaitStagesMask() const { return m_WaitStages; }
+        const std::set<Semaphore>& GetSignalSemaphores() const { return m_SignalSemaphores; }
+        const std::vector<SemaphoreWait>& GetWaitSemaphores() const;
 
         std::unique_ptr<Texture> CreateTextureFromFile(std::string a_Filepath, std::set<ECommandQueueType> a_QueuesWithAccess, VkPipelineStageFlags a_UsingStages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
@@ -105,8 +107,14 @@ namespace krt
 
         VkCommandBuffer GetVkCommandBuffer();
 
-        void BufferCopy(Buffer& a_SourceBuffer, Buffer& a_DestinationBuffer, VkDeviceSize a_Size);
+        // Performs from the source Buffer object to the destination Buffer object based on the given copy region size and offsets
+        void BufferCopy(Buffer& a_SourceBuffer, Buffer& a_DestinationBuffer, VkDeviceSize a_Size, VkDeviceSize a_SourceOffset = 0, VkDeviceSize a_DestinationOffset = 0);
+        // Performs from the source Buffer object to the destination Buffer object based on the given copy region size and offsets
+        void BufferCopy(VkBuffer a_SourceBuffer, VkBuffer a_DestinationBuffer, VkDeviceSize a_Size, VkDeviceSize a_SourceOffset = 0, VkDeviceSize a_DestinationOffset = 0);
 
+        // Transfers the CPU data to a GPU buffer, even if the buffer is not in host visible memory.
+        // Returns true if the target buffer was resized, false otherwise.
+        bool UploadToBuffer(const void* a_Data, VkDeviceSize a_DataSize, Buffer& a_TargetBuffer);
     private:
 
         void BindDescriptorSets();
@@ -123,15 +131,14 @@ namespace krt
         ServiceLocator& m_Services;
 
         VkCommandBuffer m_VkCommandBuffer;
-
         CommandQueue& m_CommandQueue;
 
         std::vector<std::unique_ptr<Buffer>> m_IntermediateBuffers;
         std::vector<std::unique_ptr<DescriptorSetAllocation>> m_IntermediateDescriptorSetAllocations;
 
-        std::set<VkSemaphore> m_WaitSemaphores;
-        std::set<VkSemaphore> m_SignalSemaphores;
-        VkPipelineStageFlags m_WaitStages;
+        std::set<Semaphore> m_SignalSemaphores;
+        mutable std::vector<SemaphoreWait> m_WaitSemaphores;
+        std::vector<DescriptorSet*> m_InUseDescriptorSets;
 
         GraphicsPipeline* m_CurrentGraphicsPipeline;
 

@@ -7,7 +7,7 @@ std::unique_ptr<BufferType> krt::LogicalDevice::CreateBuffer(uint64_t a_Size, Vk
 
     auto elements = CreateBufferElements(a_Size, a_Usage, a_MemoryProperties, a_QueuesWithAccess);
 
-    auto buffer = std::make_unique<BufferType>(m_Services);
+    auto buffer = std::make_unique<BufferType>(m_Services, a_Size, a_Usage, a_MemoryProperties, a_QueuesWithAccess);
     buffer->m_VkBuffer = elements.first;
     buffer->m_VkDeviceMemory = elements.second;
 

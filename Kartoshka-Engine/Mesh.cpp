@@ -44,7 +44,7 @@ void krt::Material::SetDiffuseColor(const glm::vec4& a_NewDiffuseColor)
     m_DescriptorSetDirty = true;
 }
 
-const krt::DescriptorSet& krt::Material::GetDescriptorSet(GraphicsPipeline& a_TargetPipeline, uint32_t a_SetIndex) const
+krt::DescriptorSet& krt::Material::GetDescriptorSet(GraphicsPipeline& a_TargetPipeline, uint32_t a_SetIndex)
 {
     UpdateDescriptorSet(a_TargetPipeline, a_SetIndex);
     return *m_DescriptorSet;
@@ -67,7 +67,7 @@ void krt::Material::BuildDescriptorSet() const
 {
     m_DescriptorSet->SetSampler(*m_Sampler, 0);
     m_DescriptorSet->SetTexture(*m_DiffuseTexture, 1);
-    m_DescriptorSet->SetUniformBuffer(m_DiffuseColor, 2);
+    m_DescriptorSet->SetUniformBuffer(m_DiffuseColor, 2, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     m_DescriptorSet->SetTexture(*m_NormalMap, 3);
     m_DescriptorSetDirty = false;
 }

@@ -41,7 +41,6 @@ void krt::CommandBuffer::Reset()
 {
     m_WaitSemaphores.clear();
     m_SignalSemaphores.clear();
-    m_WaitStages = 0;
 
     for (auto& descriptorSetAllocation : m_IntermediateDescriptorSetAllocations)
         descriptorSetAllocation.reset();
@@ -52,6 +51,7 @@ void krt::CommandBuffer::Reset()
     m_IntermediateBuffers.clear();
     m_IntermediateDescriptorSetAllocations.clear();
     m_CurrentlyBoundDescriptorSets.clear();
+    m_InUseDescriptorSets.clear();
 
     vkResetCommandBuffer(m_VkCommandBuffer, 0);
 }
@@ -82,19 +82,17 @@ void krt::CommandBuffer::Submit()
     m_CommandQueue.SubmitCommandBuffer(commandBuffer);
 }
 
-void krt::CommandBuffer::AddWaitSemaphore(VkSemaphore a_Semaphore)
+void krt::CommandBuffer::AddWaitSemaphore(Semaphore a_Semaphore, VkPipelineStageFlags a_StageFlags)
 {
-    m_WaitSemaphores.insert(a_Semaphore);
+    SemaphoreWait semWait;
+    semWait.m_Semaphore = a_Semaphore;
+    semWait.m_StageFlags = a_StageFlags;
+    m_WaitSemaphores.push_back(semWait);
 }
 
-void krt::CommandBuffer::AddSignalSemaphore(VkSemaphore a_Semaphore)
+void krt::CommandBuffer::AddSignalSemaphore(Semaphore a_Semaphore)
 {
     m_SignalSemaphores.insert(a_Semaphore);
-}
-
-void krt::CommandBuffer::SetWaitStages(VkPipelineStageFlags a_WaitStages)
-{
-    m_WaitStages = a_WaitStages;
 }
 
 void krt::CommandBuffer::BeginRenderPass(RenderPass& a_RenderPass, krt::Framebuffer& a_FrameBuffer, VkRect2D a_RenderArea, VkSubpassContents a_SubpassContents)
@@ -149,8 +147,10 @@ void krt::CommandBuffer::BindPipeline(GraphicsPipeline& a_Pipeline)
     m_CurrentlyBoundDescriptorSets.clear();
 }
 
-void krt::CommandBuffer::SetDescriptorSet(const krt::DescriptorSet& a_Set, uint32_t a_Slot)
+void krt::CommandBuffer::SetDescriptorSet(krt::DescriptorSet& a_Set, uint32_t a_Slot)
 {
+    // The descriptor set is recorded so that upon submission any semaphores on which the set is dependent can be waited for
+    m_InUseDescriptorSets.push_back(&a_Set);
     auto vkSet = *a_Set;
     vkCmdBindDescriptorSets(m_VkCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_CurrentGraphicsPipeline->m_VkPipelineLayout, a_Slot,
         1, &vkSet, 0, nullptr);
@@ -168,6 +168,23 @@ void krt::CommandBuffer::DrawIndexed(uint32_t a_NumIndices, uint32_t a_NumInstan
 {
     BindDescriptorSets();
     vkCmdDrawIndexed(m_VkCommandBuffer, a_NumIndices, a_NumInstances, a_FirstIndex, a_VertexOffset, a_FirstInstance);
+}
+
+const std::vector<krt::SemaphoreWait>& krt::CommandBuffer::GetWaitSemaphores() const
+{
+    // Collect all individual semaphores which need to be signaled before this buffer can be executed,
+    // together with what stage they should be waited at
+    for (auto& descriptorSet : m_InUseDescriptorSets)
+    {
+        auto& waits = descriptorSet->GetWaitSemaphores();
+        for (auto& wait : waits)
+        {
+            m_WaitSemaphores.push_back(wait);
+        }
+        descriptorSet->ClearWaitSemaphores();
+    }
+
+    return m_WaitSemaphores;
 }
 
 std::unique_ptr<krt::Texture> krt::CommandBuffer::CreateTextureFromFile(std::string a_Filepath,
@@ -391,15 +408,16 @@ std::unique_ptr<krt::VertexBuffer> krt::CommandBuffer::CreateVertexBuffer(void* 
 {
     a_QueuesWithAccess.insert(ETransferQueue);
 
+    const VkBufferUsageFlags usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    const VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
     uint64_t bufferSize = a_NumElements * a_ElementSize;
-    std::unique_ptr<VertexBuffer> buffer = std::make_unique<VertexBuffer>(m_Services);
-    buffer->m_NumElements = static_cast<uint32_t>(a_NumElements);
 
     auto staging = m_Services.m_LogicalDevice->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
                                                                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,{ ETransferQueue });
 
     auto local = m_Services.m_LogicalDevice->CreateBuffer<VertexBuffer>(bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, a_QueuesWithAccess);
+        usageFlags, memoryProperties, a_QueuesWithAccess);
 
     local->m_NumElements = static_cast<uint32_t>(a_NumElements);
     m_Services.m_LogicalDevice->CopyToDeviceMemory(staging->m_VkDeviceMemory, a_BufferData, bufferSize);
@@ -415,10 +433,14 @@ std::unique_ptr<krt::IndexBuffer> krt::CommandBuffer::CreateIndexBuffer(void* a_
     uint8_t a_ElementSize, std::set<ECommandQueueType> a_QueuesWithAccess)
 {
     uint64_t bufferSize = a_ElementSize * a_NumElements;
+
+    const VkBufferUsageFlags usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    const VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
     auto staging = m_Services.m_LogicalDevice->CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, {ETransferQueue});
-    auto local = m_Services.m_LogicalDevice->CreateBuffer<IndexBuffer>(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, a_QueuesWithAccess);
+    auto local = m_Services.m_LogicalDevice->CreateBuffer<IndexBuffer>(bufferSize, usageFlags,
+        memoryProperties, a_QueuesWithAccess);
 
     local->m_NumElements = static_cast<uint32_t>(a_NumElements);
 
@@ -444,13 +466,45 @@ std::unique_ptr<krt::IndexBuffer> krt::CommandBuffer::CreateIndexBuffer(void* a_
     return std::move(local);
 }
 
-void krt::CommandBuffer::BufferCopy(Buffer& a_SourceBuffer, Buffer& a_DestinationBuffer, VkDeviceSize a_Size)
+void krt::CommandBuffer::BufferCopy(Buffer& a_SourceBuffer, Buffer& a_DestinationBuffer, VkDeviceSize a_Size, VkDeviceSize a_SourceOffset, VkDeviceSize a_DestinationOffset)
+{
+    BufferCopy(a_SourceBuffer.m_VkBuffer, a_DestinationBuffer.m_VkBuffer, a_Size, a_SourceOffset, a_DestinationOffset);
+}
+
+void krt::CommandBuffer::BufferCopy(VkBuffer a_SourceBuffer, VkBuffer a_DestinationBuffer, VkDeviceSize a_Size, VkDeviceSize a_SourceOffset, VkDeviceSize a_DestinationOffset)
 {
     VkBufferCopy copyRegion = {};
     copyRegion.size = a_Size;
-    copyRegion.dstOffset = 0;
-    copyRegion.srcOffset = 0;
-    vkCmdCopyBuffer(m_VkCommandBuffer, a_SourceBuffer.m_VkBuffer, a_DestinationBuffer.m_VkBuffer, 1, &copyRegion);
+    copyRegion.srcOffset = a_SourceOffset;
+    copyRegion.dstOffset = a_DestinationOffset;
+    vkCmdCopyBuffer(m_VkCommandBuffer, a_SourceBuffer, a_DestinationBuffer, 1, &copyRegion);
+}
+
+bool krt::CommandBuffer::UploadToBuffer(const void* a_Data, VkDeviceSize a_DataSize, krt::Buffer& a_TargetBuffer)
+{
+    bool resized = false;
+    // Resize the target buffer if the data is too big for it
+    if (a_DataSize > a_TargetBuffer.m_BufferSize)
+    {
+        m_Services.m_LogicalDevice->ResizeBuffer(a_TargetBuffer, a_DataSize);
+        resized = true;
+    }
+
+    // If the memory of the target buffer allows a direct copy from CPU memory, there is no need for staging buffers
+    if (a_TargetBuffer.m_MemoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        && a_TargetBuffer.m_MemoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+    {
+        m_Services.m_LogicalDevice->CopyToDeviceMemory(a_TargetBuffer.m_VkDeviceMemory, a_Data, a_DataSize);
+        return resized;
+    }
+
+    auto& staging = m_IntermediateBuffers.emplace_back(std::move(m_Services.m_LogicalDevice->CreateBuffer(a_DataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, { ETransferQueue })));
+
+    m_Services.m_LogicalDevice->CopyToDeviceMemory(staging->m_VkDeviceMemory, a_Data, a_DataSize);
+
+    BufferCopy(*staging, a_TargetBuffer, a_DataSize);
+    return resized;
 }
 
 

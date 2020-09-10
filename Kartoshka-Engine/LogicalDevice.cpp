@@ -2,6 +2,7 @@
 #include "ServiceLocator.h"
 #include "PhysicalDevice.h"
 #include "CommandQueue.h"
+#include "CommandBuffer.h"
 #include "Buffer.h"
 
 #include "VkHelpers.h"
@@ -146,6 +147,34 @@ std::vector<const char*> krt::LogicalDevice::GetRequiredExtensions() const
     return extensions;
 }
 
+void krt::LogicalDevice::ResizeBuffer(Buffer& a_Buffer, uint64_t a_NewSize, bool a_PreserveContent)
+{
+    auto oldBuffer = a_Buffer.m_VkBuffer;
+    auto oldMemory = a_Buffer.m_VkDeviceMemory;
+
+    auto newElements = CreateBufferElements(a_NewSize, a_Buffer.m_UsageFlags,
+        a_Buffer.m_MemoryPropertyFlags, a_Buffer.m_QueuesWithAccess);
+
+    a_Buffer.m_VkBuffer = newElements.first;
+    a_Buffer.m_VkDeviceMemory = newElements.second;
+
+    if (a_PreserveContent && a_Buffer.m_BufferSize < a_NewSize)
+    {
+        auto& transferQueue = GetCommandQueue(ETransferQueue);
+        auto& transferBuffer = transferQueue.GetSingleUseCommandBuffer();
+
+        transferBuffer.Begin();
+        transferBuffer.BufferCopy(oldBuffer, a_Buffer.m_VkBuffer, a_Buffer.m_BufferSize);
+        transferBuffer.End();
+        transferBuffer.Submit();
+    }
+
+    a_Buffer.m_BufferSize = a_NewSize;
+
+    vkDestroyBuffer(m_VkLogicalDevice, oldBuffer, m_Services.m_AllocationCallbacks);
+    vkFreeMemory(m_VkLogicalDevice, oldMemory, m_Services.m_AllocationCallbacks);
+}
+
 void krt::LogicalDevice::CopyToDeviceMemory(VkDeviceMemory a_DeviceMemory, const void* a_Data, uint64_t a_DataSize)
 {
     void* mem;
@@ -163,6 +192,14 @@ std::vector<uint32_t> krt::LogicalDevice::GetQueueIndices(const std::set<EComman
     }
 
     return std::vector<uint32_t>(indicesSet.begin(), indicesSet.end());
+}
+
+void krt::LogicalDevice::Flush()
+{
+    for (auto& pair : m_CommandQueues)
+    {
+        pair.second->Flush();
+    }
 }
 
 bool krt::LogicalDevice::CheckValidationLayerSupport() const

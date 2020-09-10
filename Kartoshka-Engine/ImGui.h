@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 
+#include "SemaphoreAllocator.h"
+
 namespace krt
 {
     struct ServiceLocator;
@@ -20,7 +22,7 @@ namespace krt
         VkImGui(ServiceLocator& a_Services, RenderPass& a_RenderPass);
         ~VkImGui();
 
-        void Display(VkImageView a_ScreenImageView, std::vector<VkSemaphore> a_SignalSemaphores);
+        void Display(VkImageView a_ScreenImageView, std::vector<Semaphore> a_SignalSemaphores);
 
 
     private:

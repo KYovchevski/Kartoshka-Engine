@@ -93,24 +93,31 @@ void krt::Window::InitializeSwapchain()
     CreateImageViews();
 }
 
-krt::Window::NextFrameInfo krt::Window::GetNextFrameInfo(VkSemaphore a_SemaphoreToSignal, VkFence a_FenceToSignal)
+krt::Window::NextFrameInfo krt::Window::GetNextFrameInfo(Semaphore a_SemaphoreToSignal, VkFence a_FenceToSignal)
 {
     NextFrameInfo info;
 
-    vkAcquireNextImageKHR(m_Services.m_LogicalDevice->GetVkDevice(), m_VkSwapChain, std::numeric_limits<uint64_t>::max(), a_SemaphoreToSignal, a_FenceToSignal, &info.m_FrameIndex);
+    vkAcquireNextImageKHR(m_Services.m_LogicalDevice->GetVkDevice(), m_VkSwapChain, std::numeric_limits<uint64_t>::max(), **a_SemaphoreToSignal, a_FenceToSignal, &info.m_FrameIndex);
 
     info.m_ImageView = m_SwapChainImageViews[info.m_FrameIndex];
     return info;
 }
 
-void krt::Window::Present(uint32_t a_FrameToPresentIndex, CommandQueue& a_CommandQueue, std::vector<VkSemaphore>& a_SemaphoresToWait)
+void krt::Window::Present(uint32_t a_FrameToPresentIndex, CommandQueue& a_CommandQueue, std::vector<Semaphore>& a_SemaphoresToWait)
 {
+    std::vector<VkSemaphore> sems;
+    for (auto& semaphore : a_SemaphoresToWait)
+    {
+        sems.push_back(**semaphore);
+    }
+
+
     VkPresentInfoKHR info = {};
     info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     info.pSwapchains = &m_VkSwapChain;
     info.pImageIndices = &a_FrameToPresentIndex;
     info.swapchainCount = 1;
-    info.pWaitSemaphores = a_SemaphoresToWait.data();
+    info.pWaitSemaphores = sems.data();
     info.waitSemaphoreCount = static_cast<uint32_t>(a_SemaphoresToWait.size());
 
 

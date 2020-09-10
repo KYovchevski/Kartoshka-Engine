@@ -52,12 +52,20 @@ namespace krt
         std::unique_ptr<BufferType> CreateBuffer(uint64_t a_Size, VkBufferUsageFlags a_Usage,
             VkMemoryPropertyFlags a_MemoryProperties, const std::set<ECommandQueueType>& a_QueuesWithAccess);
 
+        // Resize an existing Buffer object. Does not preserve the current buffer content by default.
+        // If the buffer is being resized to a smaller size, the contents are never preserved.
+        void ResizeBuffer(Buffer& a_Buffer, uint64_t a_NewSize, bool a_PreserveContent = false);
+
         void CopyToDeviceMemory(VkDeviceMemory a_DeviceMemory, const void* a_Data, uint64_t a_DataSize);
 
         std::vector<uint32_t> GetQueueIndices(const std::set<ECommandQueueType>& a_Queues);
 
+        // Flushes all command queues to ensure that the device is idle
+        void Flush();
     private:
 
+        std::pair<VkBuffer, VkDeviceMemory> CreateBufferElements(uint64_t a_Size, VkBufferUsageFlags a_Usage,
+            VkMemoryPropertyFlags a_MemoryProperties, const std::set<ECommandQueueType>& a_QueuesWithAccess);
         std::vector<const char*>    GetRequiredExtensions() const;
         bool                        CheckValidationLayerSupport() const;
         bool                        ValidateExtensionSupport(std::vector<const char*> a_Extensions) const;
@@ -65,8 +73,6 @@ namespace krt
         std::vector<VkDeviceQueueCreateInfo> GenerateQueueInfos();
 
     private:
-        std::pair<VkBuffer, VkDeviceMemory> CreateBufferElements(uint64_t a_Size, VkBufferUsageFlags a_Usage,
-            VkMemoryPropertyFlags a_MemoryProperties, const std::set<ECommandQueueType>& a_QueuesWithAccess);
 
         ServiceLocator& m_Services;
 

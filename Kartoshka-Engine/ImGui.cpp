@@ -80,7 +80,7 @@ krt::VkImGui::~VkImGui()
     ImGui_ImplVulkan_Shutdown();
 }
 
-void krt::VkImGui::Display(VkImageView a_ScreenImageView, std::vector<VkSemaphore> a_SignalSemaphores)
+void krt::VkImGui::Display(VkImageView a_ScreenImageView, std::vector<Semaphore> a_SignalSemaphores)
 {
     ImGui::Render();
 
@@ -104,14 +104,12 @@ void krt::VkImGui::Display(VkImageView a_ScreenImageView, std::vector<VkSemaphor
     {
         commandBuffer.AddSignalSemaphore(signalSemaphore);
     }
-    commandBuffer.SetWaitStages(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
     commandBuffer.Submit();
 
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-
 }
 
 void krt::VkImGui::CreateRenderPass()

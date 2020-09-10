@@ -12,6 +12,7 @@ namespace krt
     class LogicalDevice;
     class ModelManager;
     class GraphicsPipeline;
+    class SemaphoreAllocator;
 }
 
 namespace krt
@@ -24,6 +25,8 @@ namespace krt
         PhysicalDevice* m_PhysicalDevice;
         LogicalDevice* m_LogicalDevice;
         ModelManager* m_ModelManager;
+        SemaphoreAllocator* m_SemaphoreAllocator;
+
         std::map<std::string, GraphicsPipeline*> m_GraphicsPipelines;
     };
 
