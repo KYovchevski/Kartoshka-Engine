@@ -29,16 +29,23 @@ namespace krt
         ~DescriptorSet();
 
         template<typename BufferStruct>
-        void SetUniformBuffer(const BufferStruct& a_BufferStruct, uint32_t a_Binding,
+        SemaphoreWait SetUniformBuffer(const BufferStruct& a_BufferStruct, uint32_t a_Binding,
             VkPipelineStageFlags a_UsingStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
-        void SetUniformBuffer(const void* a_Data, uint32_t a_DataSize, uint32_t a_Binding,
+        SemaphoreWait SetUniformBuffer(const void* a_Data, VkDeviceSize a_DataSize, uint32_t a_Binding,
+                                        VkPipelineStageFlags a_UsingStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+        template<typename StructType>
+        SemaphoreWait SetUniformBuffer(const std::vector<StructType> a_Data, uint32_t a_Binding,
             VkPipelineStageFlags a_UsingStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
 
         template<typename BufferStruct>
-        void SetStorageBuffer(const std::vector<BufferStruct>& a_StructList, uint32_t a_Binding,
-            VkPipelineStageFlags a_UsingStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
-        void SetStorageBuffer(const void* a_Data, uint32_t a_DataSize, uint32_t a_Binding,
-            VkPipelineStageFlags a_UsingStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+        SemaphoreWait SetStorageBuffer(const std::vector<BufferStruct>& a_StructList, uint32_t a_Binding,
+                                        VkPipelineStageFlags a_UsingStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+        template<typename HeaderStruct, typename BufferStruct>
+        SemaphoreWait SetStorageBuffer(const HeaderStruct& a_Header, const std::vector<BufferStruct>& a_StructList, uint32_t a_Binding,
+                                        VkPipelineStageFlags a_UsingStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+
+        SemaphoreWait SetStorageBuffer(const void* a_Data, VkDeviceSize a_DataSize, uint32_t a_Binding,
+                                        VkPipelineStageFlags a_UsingStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
 
         void SetSampler(const Sampler& a_Sampler, uint32_t a_Binding);
         void SetTexture(const Texture& a_Texture, uint32_t a_Binding);
@@ -52,8 +59,8 @@ namespace krt
 
     private:
 
-        krt::Semaphore CreateUniformBuffer(const void* a_Data, uint32_t a_Size, uint32_t a_Binding);
-        krt::Semaphore UpdateUniformBuffer(const void* a_Data, uint32_t a_Size, uint32_t a_Binding);
+        krt::Semaphore CreateBuffer(const void* a_Data, VkDeviceSize a_Size, uint32_t a_Binding, VkBufferUsageFlags a_UsageFlags);
+        krt::Semaphore UpdateBuffer(const void* a_Data, VkDeviceSize a_Size, uint32_t a_Binding);
 
         ServiceLocator& m_Services;
 

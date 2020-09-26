@@ -5,6 +5,7 @@
 
 namespace krt
 {
+    struct SemaphoreWait;
     struct ServiceLocator;
     class StaticMesh;
     class DescriptorSet;
@@ -24,7 +25,7 @@ namespace krt
 
         PointLight* AddPointLight();
 
-        DescriptorSet& GetLightsDescriptorSet() const;
+        DescriptorSet& GetLightsDescriptorSet(SemaphoreWait& a_WaitSemaphore) const;
         void MakeLightsDirty();
 
         Camera* m_ActiveCamera;

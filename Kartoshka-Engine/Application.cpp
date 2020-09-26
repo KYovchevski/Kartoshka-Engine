@@ -225,11 +225,12 @@ void krt::Application::CreateGraphicsPipeline()
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 2, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 3, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
-    pipelineInfo.m_PipelineLayout.AddLayoutBinding(1, 0, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(1, 0, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
     pipelineInfo.m_RenderPass = m_ForwardRenderPass.get();
     pipelineInfo.m_SubpassIndex = 0;
 
+    pipelineInfo.m_RasterizationStateInfo->cullMode = VK_CULL_MODE_BACK_BIT;
 
     m_GraphicsPipeline = std::make_unique<GraphicsPipeline>(*m_ServiceLocator, pipelineInfo);
 
@@ -329,9 +330,9 @@ void krt::Application::LoadAssets()
 
     auto& transferQueue = m_LogicalDevice->GetCommandQueue(ETransferQueue);
 
-    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
+    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/Models/Cube.gltf");
-    auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/NormalTangentTest.gltf");
+    //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/NormalTangentMirrorTest.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/CrowdKing/JL.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Lantern/Lantern.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/TwoSidedPlane.gltf");
@@ -339,12 +340,18 @@ void krt::Application::LoadAssets()
     m_Sponza = res->GetScene();
 
     m_Light = m_Sponza->AddPointLight();
+    m_Light->SetPosition(glm::vec3(-5.0f, 2.0f, 0.0f));
+
+    m_Light1 = m_Sponza->AddPointLight();
+    m_Light1->SetPosition(glm::vec3(5.0f, 2.0f, 0.0f));
 
     m_Camera = std::make_unique<Camera>();
     m_Camera->SetPosition(glm::vec3(0.0f, 0.0f, -5.0f));
     m_Camera->SetAspectRatio(m_Window->GetAspectRatio());
     m_Camera->SetFarClipDistance(150.0f);
     m_Sponza->m_ActiveCamera = m_Camera.get();
+
+    m_Sponza->m_StaticMeshes[0]->m_Transform->SetRotation(glm::vec3(0.0f, 0.0f, 0.0f));
 
     transferQueue.Flush();
 
@@ -385,7 +392,10 @@ void krt::Application::DrawFrame()
 
     glm::mat4 cameraMatrix = m_Camera->GetCameraMatrix();
 
-    commandBuffer.SetDescriptorSet(m_Sponza->GetLightsDescriptorSet(), 1);
+    SemaphoreWait semWait;
+
+    commandBuffer.SetDescriptorSet(m_Sponza->GetLightsDescriptorSet(semWait), 1);    
+    commandBuffer.AddWaitSemaphore(semWait.m_Semaphore, semWait.m_StageFlags);
 
     for (auto& mesh : m_Sponza->m_StaticMeshes)
     {
@@ -439,18 +449,32 @@ void krt::Application::DrawFrame()
 
     // Can do all ImGui after the present call, since at this point the CPU is already waiting for the GPU due to the lack of good management on my end.
     m_Window->Present(frameInfo.m_FrameIndex, presentQueue, presentSemaphores);
-    glm::vec3 v = m_Light->GetPosition();
-    glm::vec3 c = m_Light->GetColor();
     glm::vec3 p = m_Sponza->m_StaticMeshes[0]->m_Transform->GetPosition();
+    glm::vec3 r = m_Sponza->m_StaticMeshes[0]->m_Transform->GetRotationEuler();
+    glm::vec3 v;
+    glm::vec3 c;
+
 
     ImGui::Begin("Debug");
     ImGui::DragFloat3("Model Position", &p[0]);
+    ImGui::DragFloat3("Model Rotation", &r[0]);
+    v = m_Light->GetPosition();
+    c = m_Light->GetColor();
     ImGui::DragFloat3("Light Position", &v[0]);
     ImGui::ColorEdit3("Light Color", &c[0], ImGuiColorEditFlags_Float);
-    ImGui::End();
-    m_Light->SetPosition(v);
     m_Light->SetColor(c);
+    m_Light->SetPosition(v);
+
+    v = m_Light1->GetPosition();
+    c = m_Light1->GetColor();
+    ImGui::DragFloat3("Light1 Position", &v[0]);
+    ImGui::ColorEdit3("Light1 Color", &c[0], ImGuiColorEditFlags_Float);
+    m_Light1->SetColor(c);
+    m_Light1->SetPosition(v);
+
+    ImGui::End();
     m_Sponza->m_StaticMeshes[0]->m_Transform->SetPosition(p);
+    m_Sponza->m_StaticMeshes[0]->m_Transform->SetRotation(r);
 
     presentQueue.Flush();
 }

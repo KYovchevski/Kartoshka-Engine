@@ -98,6 +98,7 @@ void krt::LogicalDevice::InitializeDevice()
     VkPhysicalDeviceFeatures physicalDeviceFeatures{};
     physicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
     physicalDeviceFeatures.depthBounds = VK_TRUE;
+    physicalDeviceFeatures.fragmentStoresAndAtomics = VK_TRUE;
 
     assert(ValidateExtensionSupport(requiredExtensions));
 

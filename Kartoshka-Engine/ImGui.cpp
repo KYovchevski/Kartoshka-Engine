@@ -41,6 +41,9 @@ krt::VkImGui::VkImGui(ServiceLocator& a_Services, RenderPass&)
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
 
+    auto io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
     ImGui_ImplGlfw_InitForVulkan(m_Services.m_Window->GetGLFWwindow(), true);
     ImGui_ImplVulkan_InitInfo info = {};
     info.DescriptorPool = m_VkDescriptorPool;

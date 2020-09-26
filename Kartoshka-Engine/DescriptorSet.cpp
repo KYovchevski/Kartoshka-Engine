@@ -26,26 +26,79 @@ krt::DescriptorSet::~DescriptorSet()
         m_DescriptorSetAllocation.reset();
 }
 
-void krt::DescriptorSet::SetUniformBuffer(const void* a_Data, uint32_t a_DataSize, uint32_t a_Binding, VkPipelineStageFlags a_UsingStage)
+krt::SemaphoreWait krt::DescriptorSet::SetUniformBuffer(const void* a_Data, VkDeviceSize a_DataSize, uint32_t a_Binding, VkPipelineStageFlags a_UsingStage)
 {
-    // TODO: Add updating to the buffer if one already exists
-    //CreateUniformBuffer(a_Data, a_DataSize, a_Binding);
-
     SemaphoreWait& semWait = m_SemaphoreWaits.emplace_back();
     semWait.m_StageFlags = a_UsingStage;
 
-    if (m_Buffers.count(a_Binding) == 0)
+    if (m_Buffers.count(a_Binding) == 0 || m_Buffers.at(a_Binding)->m_BufferSize < a_DataSize)
     {
-        // No buffer for this binding exists already
-        semWait.m_Semaphore = CreateUniformBuffer(a_Data, a_DataSize, a_Binding);
+        // No buffer for this binding exists already, or the buffer is too small for the data
+        semWait.m_Semaphore = CreateBuffer(a_Data, a_DataSize, a_Binding, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
+        // Since a new buffer was created and stored in m_Buffers, the descriptor set needs to be updated
+        // to use that new buffer
+        VkDescriptorBufferInfo bufferInfo = {};
+        bufferInfo.offset = 0;
+        bufferInfo.range = VK_WHOLE_SIZE;
+        bufferInfo.buffer = m_Buffers[a_Binding]->m_VkBuffer;
+
+        VkWriteDescriptorSet write = {};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        write.descriptorCount = 1;
+        write.dstArrayElement = 0;
+        write.dstBinding = a_Binding;
+        write.dstSet = **m_DescriptorSetAllocation;
+        write.pBufferInfo = &bufferInfo;
+
+        // The descriptor set update does not need to wait for the transfer commands to be executed, so we don't need to synchronize immediately.
+        vkUpdateDescriptorSets(m_Services.m_LogicalDevice->GetVkDevice(), 1, &write, 0, nullptr);
     }
     else
     {
-        // A buffer for this binding already exists and can be updated
-
-        semWait.m_Semaphore = UpdateUniformBuffer(a_Data, a_DataSize, a_Binding);
+        // A buffer for this binding already exists and is bound to the descriptor set
+        // All that needs to be done is update the data in it
+        semWait.m_Semaphore = UpdateBuffer(a_Data, a_DataSize, a_Binding);
     }
+
+    return semWait;
 }
+
+krt::SemaphoreWait krt::DescriptorSet::SetStorageBuffer(const void* a_Data, VkDeviceSize a_DataSize, uint32_t a_Binding,
+                                                        VkPipelineStageFlags a_UsingStage)
+{
+    SemaphoreWait semWait;
+    semWait.m_StageFlags = a_UsingStage;
+
+    if (m_Buffers.count(a_Binding) == 0 || m_Buffers.at(a_Binding)->m_BufferSize < a_DataSize)
+    {
+        semWait.m_Semaphore = CreateBuffer(a_Data, a_DataSize, a_Binding, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+        VkDescriptorBufferInfo bufferInfo = {};
+        bufferInfo.buffer = m_Buffers[a_Binding]->m_VkBuffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = VK_WHOLE_SIZE;
+
+        VkWriteDescriptorSet write = {};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstBinding = a_Binding;
+        write.descriptorCount = 1;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        write.dstSet = **m_DescriptorSetAllocation;
+        write.dstArrayElement = 0;
+        write.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(m_Services.m_LogicalDevice->GetVkDevice(), 1, &write, 0, nullptr);
+    }
+    else
+    {
+        semWait.m_Semaphore = UpdateBuffer(a_Data, a_DataSize, a_Binding);
+    }
+
+    return semWait;
+}
+
 
 void krt::DescriptorSet::SetSampler(const Sampler& a_Sampler, uint32_t a_Binding)
 {
@@ -81,7 +134,6 @@ void krt::DescriptorSet::SetTexture(const Texture& a_Texture, uint32_t a_Binding
     write.pImageInfo = &imageInfo;
 
     vkUpdateDescriptorSets(m_Services.m_LogicalDevice->GetVkDevice(), 1, &write, 0, nullptr);
-
 }
 
 VkDescriptorSet krt::DescriptorSet::operator*() const
@@ -90,9 +142,9 @@ VkDescriptorSet krt::DescriptorSet::operator*() const
 }
 
 
-krt::Semaphore krt::DescriptorSet::CreateUniformBuffer(const void* a_Data, uint32_t a_Size, uint32_t a_Binding)
+krt::Semaphore krt::DescriptorSet::CreateBuffer(const void* a_Data, VkDeviceSize a_Size, uint32_t a_Binding, VkBufferUsageFlags a_UsageFlags)
 {
-        auto buffer = m_Services.m_LogicalDevice->CreateBuffer(a_Size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+    auto buffer = m_Services.m_LogicalDevice->CreateBuffer(a_Size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | a_UsageFlags,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_QueuesWithAccess);
 
     auto& transferQueue = m_Services.m_LogicalDevice->GetCommandQueue(ETransferQueue);
@@ -111,30 +163,10 @@ krt::Semaphore krt::DescriptorSet::CreateUniformBuffer(const void* a_Data, uint3
     // The descriptor set is the owner of the buffer, so it is the holder of the unique_ptr
     m_Buffers[a_Binding] = std::move(buffer);
 
-    VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.offset = 0;
-    bufferInfo.range = VK_WHOLE_SIZE;
-    bufferInfo.buffer = m_Buffers[a_Binding]->m_VkBuffer;
-
-    VkWriteDescriptorSet write = {};
-    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    write.descriptorCount = 1;
-    write.dstArrayElement = 0;
-    write.dstBinding = a_Binding;
-    write.dstSet = **m_DescriptorSetAllocation;
-    write.pBufferInfo = &bufferInfo;
-
-    // TODO: Replace this with something that isn't an immediate flush of the command queue
-    // Maybe check if the command buffer has finished executing before binding?
-    //transferQueue.Flush();
-
-    // The descriptor set update does not need to wait for the transfer commands to be executed, so we don't need to synchronize immediately.
-    vkUpdateDescriptorSets(m_Services.m_LogicalDevice->GetVkDevice(), 1, &write, 0, nullptr);
     return sem;
 }
 
-krt::Semaphore krt::DescriptorSet::UpdateUniformBuffer(const void* a_Data, uint32_t a_Size, uint32_t a_Binding)
+krt::Semaphore krt::DescriptorSet::UpdateBuffer(const void* a_Data, VkDeviceSize a_Size, uint32_t a_Binding)
 {
     a_Binding;
     //TODO: Implement this properly

@@ -1,0 +1,13 @@
+﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppBuild.targets(453,5): warning MSB8004: Output Directory does not end with a trailing slash.  This build instance will add the slash as it is required to allow proper evaluation of the Output Directory.
+  Compiling Fragment.spv
+  G:\RandomCode\Kartoshka-Engine\Shaders\Fragment.glsl:47: error: 'assign' :  cannot convert from ' temp highp 3-component vector of float' to 'layout( location=0) out highp 4-component vector of float'
+  1 error generated.
+          1 file(s) copied.
+  Compiling Vertex.spv
+          1 file(s) copied.
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(231,5): warning MSB8065: Custom build for item "..\Shaders\Fragment.glsl" succeeded, but specified output "g:\randomcode\kartoshka-engine\kartoshka-shaders\fragment.spv" has not been created. This may cause incremental build to work incorrectly.
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(231,5): warning MSB8065: Custom build for item "..\Shaders\Vertex.glsl" succeeded, but specified output "g:\randomcode\kartoshka-engine\kartoshka-shaders\vertex.spv" has not been created. This may cause incremental build to work incorrectly.
+  'G:\RandomCode\Kartoshka-Engine\/Tools/CompileShaders.bat' is not recognized as an internal or external command,
+  operable program or batch file.
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(149,5): error MSB3073: The command "call G:\RandomCode\Kartoshka-Engine\/Tools/CompileShaders.bat ""
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(149,5): error MSB3073: :VCEnd" exited with code 1.

@@ -135,6 +135,7 @@ namespace krt
         std::unique_ptr<Camera>         m_Camera;
 
         PointLight*                     m_Light;
+        PointLight*                     m_Light1;
 
         std::shared_ptr<Scene>          m_Sponza;
 

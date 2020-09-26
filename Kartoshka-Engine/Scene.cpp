@@ -30,22 +30,38 @@ krt::PointLight* krt::Scene::AddPointLight()
     return newLight.get();
 }
 
-krt::DescriptorSet& krt::Scene::GetLightsDescriptorSet() const
+krt::DescriptorSet& krt::Scene::GetLightsDescriptorSet(SemaphoreWait& a_WaitSemaphore) const
 {
     if (m_LightsDescriptorSetDirty)
     {
-        struct Light
+        struct PointLight
         {
             glm::vec3 m_Position;
-            float m_Padding;
+            float __Padding;
             glm::vec3 m_Color;
-        } light;
+            float __Padding1;
+        };
 
-        light.m_Position = m_PointLights[0]->GetPosition();
-        light.m_Color = m_PointLights[0]->GetColor();
+        std::vector<PointLight> lights;
+        lights.reserve(m_PointLights.size());
+
+        for (auto& pointLight : m_PointLights)
+        {
+            auto& light = lights.emplace_back();
+            light.m_Position = pointLight->GetPosition();
+            light.m_Color = pointLight->GetColor();            
+        }
+
+        struct Header
+        {
+            uint32_t m_NumLights;
+            glm::ivec3 _padding;
+        } header;
+
+        header.m_NumLights = static_cast<uint32_t>(m_PointLights.size());
 
         m_LightsDescriptorSetDirty = false;
-        m_LightsDescriptorSet->SetUniformBuffer(light, 0, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        a_WaitSemaphore = m_LightsDescriptorSet->SetStorageBuffer(header, lights, 0, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     }
 
     return *m_LightsDescriptorSet;

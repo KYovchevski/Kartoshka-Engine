@@ -27,13 +27,24 @@ out gl_PerVertex
 
 mat3x3 CalculateTBN(vec4 a_Tangent, vec3 a_Normal)
 {
-	mat4 WorldToLocal = inverse(u_Push.m_WorldMatrix);
 
-	vec3 T = normalize((vec4(a_Tangent.xyz, 0.0f) * WorldToLocal).xyz);
-	vec3 N = normalize((vec4(a_Normal, 0.0f) *		WorldToLocal).xyz);
+	mat4 mat = inverse(transpose(u_Push.m_WorldMatrix));
 
-	vec3 B = normalize(cross(T, N));
+	// Transform the normal into world space
+	vec3 N = normalize(vec4(a_Normal, 0.0f) * mat).xyz;
+	
+	// homogenize the tangent 
+	vec3 T = normalize(a_Tangent.xyz);
+	// Transform the tangent into world space
+	T = normalize(vec4(T, 0.0f) * mat).xyz;
 
+	vec3 B = cross(T, N) * a_Tangent.w;
+
+	// N - world space normal
+	// T - world space tangent
+
+	// tangent space to world space?
+//	return mat3x3(mat4(vec4(T, 0.0f), vec4(B, 0.0f), vec4(N, 0.0f), vec4(0.0f, 0.0f, 0.0f, 1.0f)));
 	return inverse(mat3x3(T, B, N));
 }
 
@@ -41,7 +52,7 @@ void main()
 {
 	o_Tex = i_Tex;
 	o_Color = i_Color;
-	o_WorldPosition = (vec4(i_Pos, 1.0f) * u_Push.m_WorldMatrix).xyz;
+	o_WorldPosition = (u_Push.m_WorldMatrix * vec4(i_Pos, 1.0f)).xyz;
 	o_Normal = normalize(vec4(i_Normal, 0.0f) * inverse((u_Push.m_WorldMatrix))).xyz;
 	o_TBN = CalculateTBN(i_Tangent, i_Normal);
 

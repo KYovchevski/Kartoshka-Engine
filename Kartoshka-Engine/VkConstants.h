@@ -18,7 +18,10 @@ namespace krt
     namespace constants
     {
         const std::vector<const char*> VkValidationLayers = { "VK_LAYER_KHRONOS_validation" };
-        const std::vector<const char*> VkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_MAINTENANCE1_EXTENSION_NAME };
+        const std::vector<const char*> VkDeviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_MAINTENANCE1_EXTENSION_NAME,
+        };
     }
 
 }
