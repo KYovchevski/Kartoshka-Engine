@@ -297,8 +297,8 @@ std::pair<VkBuffer, VkDeviceMemory> krt::LogicalDevice::CreateBufferElements(uin
     bufferInfo.size = a_Size;
     bufferInfo.usage = a_Usage;
     bufferInfo.pQueueFamilyIndices = queues.data();
-    bufferInfo.queueFamilyIndexCount = queues.size() == 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(queues.size());
+    bufferInfo.sharingMode = queues.size() == 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
     ThrowIfFailed(vkCreateBuffer(m_VkLogicalDevice, &bufferInfo, m_Services.m_AllocationCallbacks, &vkBuffer));
 
     auto memoryInfo = m_Services.m_PhysicalDevice->GetMemoryInfoForBuffer(vkBuffer, a_MemoryProperties);

@@ -97,13 +97,7 @@ void krt::CommandBuffer::AddSignalSemaphore(Semaphore a_Semaphore)
 
 void krt::CommandBuffer::BeginRenderPass(RenderPass& a_RenderPass, krt::Framebuffer& a_FrameBuffer, VkRect2D a_RenderArea, VkSubpassContents a_SubpassContents)
 {
-    // TODO: the clear value is hardcoded, this should most likely be part of a custom Framebuffer class so that the clear value can be specified for all images
-    VkClearValue colorClearValue;
-    colorClearValue.color = { 0.4f, 0.5f, 0.9f,1.0f };
-    VkClearValue depthClearValue;
-    depthClearValue.depthStencil = { 1.0f, 0 };
-
-    std::vector<VkClearValue> clearValues = { colorClearValue, depthClearValue };
+    std::vector<VkClearValue> clearValues = a_FrameBuffer.GetClearValues();
 
     VkRenderPassBeginInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -113,6 +107,7 @@ void krt::CommandBuffer::BeginRenderPass(RenderPass& a_RenderPass, krt::Framebuf
     info.pClearValues = clearValues.data();
     info.renderArea = a_RenderArea;
     vkCmdBeginRenderPass(m_VkCommandBuffer, &info, a_SubpassContents);
+
 }
 
 void krt::CommandBuffer::EndRenderPass()
@@ -262,7 +257,6 @@ std::unique_ptr<krt::Texture> krt::CommandBuffer::CreateTexture(void* a_Data, gl
     copy.bufferOffset = 0;
     copy.bufferRowLength = 0;
     
-
     copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copy.imageSubresource.baseArrayLayer = 0;
     copy.imageSubresource.layerCount = 1;

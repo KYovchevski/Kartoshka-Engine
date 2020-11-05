@@ -53,6 +53,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.1.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -104,6 +105,9 @@
       <AdditionalLibraryDirectories>$(SolutionDir)/Dependencies/Libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>GLFW/glfw3.lib;Vulkan/vulkan-1.lib;ImGui/ImGui_$(Configuration)_$(Platform).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <NvccCompilation>ptx</NvccCompilation>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -147,6 +151,7 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CommandBuffer.cpp" />
     <ClCompile Include="CommandQueue.cpp" />
+    <ClCompile Include="CubeShadowMap.cpp" />
     <ClCompile Include="DepthBuffer.cpp" />
     <ClCompile Include="DescriptorSet.cpp" />
     <ClCompile Include="DescriptorSetAllocation.cpp" />
@@ -180,6 +185,7 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CommandBuffer.h" />
     <ClInclude Include="CommandQueue.h" />
+    <ClInclude Include="CubeShadowMap.h" />
     <ClInclude Include="DepthBuffer.h" />
     <ClInclude Include="DescriptorSet.h" />
     <ClInclude Include="DescriptorSetAllocation.h" />
@@ -218,5 +224,6 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.1.targets" />
   </ImportGroup>
 </Project>

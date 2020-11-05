@@ -15,7 +15,7 @@ namespace krt
     class DepthBuffer : public krt::Texture
     {
     public:
-        DepthBuffer(ServiceLocator& a_Services, uint32_t a_Width, uint32_t a_Height, VkFormat a_Format, std::set<ECommandQueueType> a_UsingQueues);
+        DepthBuffer(ServiceLocator& a_Services, uint32_t a_Width, uint32_t a_Height, VkFormat a_Format, std::set<ECommandQueueType>& a_UsingQueues);
         ~DepthBuffer();
 
 

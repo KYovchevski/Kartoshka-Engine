@@ -23,9 +23,11 @@
 #include "PointLight.h"
 #include "ImGui.h"
 #include "SemaphoreAllocator.h"
+#include "CubeShadowMap.h"
 
 #include "VkHelpers.h"
 
+#define GLM_
 #include "glm/glm.hpp"
 #include "glm/vec3.hpp"
 #include "glm/gtx/vec_swizzle.hpp"
@@ -82,13 +84,15 @@ void krt::Application::Run(const InitializationInfo& a_Info)
     ParseInitializationInfo(a_Info);
     Initialize(a_Info);
 
+    Semaphore lastFrameSemaphore = nullptr;
+
     while (!m_Window->ShouldClose())
     {
         m_Window->PollEvents();
         if (!m_InFocus)
             continue;
         ProcessInput();
-        DrawFrame();
+        lastFrameSemaphore = DrawFrame(lastFrameSemaphore);
     }
 
     vkDeviceWaitIdle(m_LogicalDevice->GetVkDevice());
@@ -149,8 +153,6 @@ void krt::Application::InitializeVulkan(const InitializationInfo& a_Info)
     m_LogicalDevice->InitializeDevice();
     SetupDebugMessenger();
 
-    CreateDepthBuffer();
-
     m_Window->InitializeSwapchain();
     CreateRenderPass();
     CreateGraphicsPipeline();
@@ -159,6 +161,10 @@ void krt::Application::InitializeVulkan(const InitializationInfo& a_Info)
     m_ServiceLocator->m_SemaphoreAllocator = m_SemaphoreAllocator.get();
 
     m_ModelManager = std::make_unique<ModelManager>(*m_ServiceLocator);
+
+    m_Window->CreateFrameBuffers(*m_ForwardRenderPass);
+
+    m_Window->SetClearColor(glm::vec4(0.4f, 0.5f, 0.9f, 1.0f));
 
     LoadAssets();
 
@@ -181,26 +187,15 @@ void krt::Application::SetupDebugMessenger()
 #endif
 }
 
-void krt::Application::CreateDepthBuffer()
-{
-    auto screenSize = m_Window->GetScreenSize();
-
-    auto depthFormat = m_PhysicalDevice->FindSupportedFormat({ VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT },
-        VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-
-    std::set<ECommandQueueType> queueTypes = { EGraphicsQueue };
-    m_DepthBuffer = std::make_unique<DepthBuffer>(*m_ServiceLocator, screenSize.x, screenSize.y, depthFormat, queueTypes);
-
-}
 
 void krt::Application::CreateGraphicsPipeline()
 {
     printf("Creating graphics pipeline.\n");
     glm::uvec2 screenSize = m_Window->GetScreenSize();
 
-    auto colorAttachment = ColorBlendAttachment::CreateDefault();
+    VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
 
-
+#pragma region GeometryPipeline
     GraphicsPipeline::CreateInfo pipelineInfo;
     pipelineInfo.m_FragmentShaderFilepath = "../../../SpirV/Fragment.spv";
     pipelineInfo.m_VertexShaderFilepath = "../../../SpirV/Vertex.spv";
@@ -209,11 +204,12 @@ void krt::Application::CreateGraphicsPipeline()
     pipelineInfo.m_Viewports.push_back({ 0.0f, 0.0f, static_cast<float>(screenSize.x), static_cast<float>(screenSize.y), 0.0f, 1.0f });
     pipelineInfo.m_ScissorRects.push_back({ 0, 0,screenSize.x, screenSize.y });
 
+    auto colorAttachment = ColorBlendAttachment::CreateDefault();
     pipelineInfo.m_ColorBlendInfo->pAttachments = &colorAttachment;
     pipelineInfo.m_ColorBlendInfo->attachmentCount = 1;
 
-    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec2>(0, 0, VK_FORMAT_R32G32_SFLOAT); // Tex Coords
-    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(1, 1, VK_FORMAT_R32G32B32_SFLOAT); // Positions
+    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(0, 0, VK_FORMAT_R32G32B32_SFLOAT); // Positions
+    pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec2>(1, 1, VK_FORMAT_R32G32_SFLOAT); // Tex Coords
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec4>(2, 2, VK_FORMAT_R32G32B32A32_SFLOAT); // Vertex Colors
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec3>(3, 3, VK_FORMAT_R32G32B32_SFLOAT); // Normals
     pipelineInfo.m_VertexInput.AddPerVertexAttribute<glm::vec4>(4, 4, VK_FORMAT_R32G32B32A32_SFLOAT); // Tangents
@@ -226,15 +222,42 @@ void krt::Application::CreateGraphicsPipeline()
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(0, 3, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
     pipelineInfo.m_PipelineLayout.AddLayoutBinding(1, 0, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(1, 1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+    pipelineInfo.m_PipelineLayout.AddLayoutBinding(1, 2, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
     pipelineInfo.m_RenderPass = m_ForwardRenderPass.get();
     pipelineInfo.m_SubpassIndex = 0;
 
-    pipelineInfo.m_RasterizationStateInfo->cullMode = VK_CULL_MODE_BACK_BIT;
+    pipelineInfo.m_RasterizationStateInfo->cullMode = VK_CULL_MODE_NONE;
 
     m_GraphicsPipeline = std::make_unique<GraphicsPipeline>(*m_ServiceLocator, pipelineInfo);
 
-    m_ServiceLocator->m_GraphicsPipelines.emplace("Scene", m_GraphicsPipeline.get());
+    m_ServiceLocator->m_GraphicsPipelines.emplace(Forward, m_GraphicsPipeline.get());
+    
+#pragma endregion 
+#pragma region ShadowMapPipeline
+
+    GraphicsPipeline::CreateInfo shadowMapPipeline;
+
+    shadowMapPipeline.m_VertexShaderFilepath = "../../../SpirV/ShadowVertex.spv";
+    shadowMapPipeline.m_DynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+    shadowMapPipeline.m_DynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR);
+    shadowMapPipeline.m_Viewports.push_back(VkViewport{ 0, 0, 512, 512, 0.0f, 1.0f });
+    shadowMapPipeline.m_ScissorRects.push_back({ 0, 0, 512, 512 });
+
+    //shadowMapPipeline.m_VertexInput.AddPerVertexAttribute<glm::vec3>(0, 0, VK_FORMAT_R32G32B32_SFLOAT); // Position
+    shadowMapPipeline.m_VertexInput.AddPerVertexAttribute<glm::vec3>(0, 0, VK_FORMAT_R32G32B32_SFLOAT); // Positions
+
+    shadowMapPipeline.m_PipelineLayout.AddPushConstantRange<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT);
+
+    shadowMapPipeline.m_RenderPass = m_ShadowRenderPass.get();
+    shadowMapPipeline.m_SubpassIndex = 0;
+    shadowMapPipeline.m_RasterizationStateInfo->cullMode = cullMode ^ 3; // No, i actually don't care anymore
+
+    m_ShadowPipeline = std::make_unique<GraphicsPipeline>(*m_ServiceLocator, shadowMapPipeline);
+    m_ServiceLocator->m_GraphicsPipelines.emplace(ShadowMap, m_ShadowPipeline.get());
+
+#pragma endregion
 
     printf("Graphics pipeline created successfully.\n");
 }
@@ -246,8 +269,6 @@ void krt::Application::CreateRenderPass()
 
     // Describes the attachment
     // In this case the attachment is an image from the swap chain which will be presented
-
-
     VkAttachmentDescription attachmentDescription = {};
     attachmentDescription.format = m_ServiceLocator->m_Window->GetRenderSurfaceFormat();
     attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT; // How many samples to do for geometry edges
@@ -262,7 +283,7 @@ void krt::Application::CreateRenderPass()
     attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
     VkAttachmentDescription depthAttachment = {};
-    depthAttachment.format = m_DepthBuffer->GetVkFormat();
+    depthAttachment.format = m_Window->GetDepthBuffer().GetVkFormat();
     depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -279,7 +300,7 @@ void krt::Application::CreateRenderPass()
     VkAttachmentReference attachmentReference = {};
     // The index of the attachment in the attachment descriptions array
     // The array is the pAttachments variable of the VkRenderPassCreateInfo
-    attachmentReference.attachment = 0; 
+    attachmentReference.attachment = 0;
     // The layout we want the attachment in before the subpass is started
     attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
@@ -305,15 +326,53 @@ void krt::Application::CreateRenderPass()
     subpassDependency.srcAccessMask = 0; // No access from the source?
     subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // In the color attachment output stage, after the fragment shader
     subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT; // Can write to the color attachment
-    subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; 
+    subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     RenderPass::CreateInfo createInfo;
     createInfo.m_Attachments.push_back(attachmentDescription);
     createInfo.m_Attachments.push_back(depthAttachment);
     createInfo.m_Subpasses.push_back(subpassDescription);
     createInfo.m_SubpassDependencies.push_back(subpassDependency);
-
     m_ForwardRenderPass = std::make_unique<RenderPass>(*m_ServiceLocator, createInfo);
+
+    m_ServiceLocator->m_RenderPasses.emplace(ForwardPass, m_ForwardRenderPass.get());
+
+    RenderPass::CreateInfo shadowPassInfo;
+    {
+        auto& depth = shadowPassInfo.m_Attachments.emplace_back(); // 0
+        depth = {};
+        depth.format = VK_FORMAT_D32_SFLOAT; // TODO: this limits the shadow map format to D32_SFLOAT
+        depth.samples = VK_SAMPLE_COUNT_1_BIT;
+        depth.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        depth.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depth.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        depth.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depth.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+        VkAttachmentReference ref = {};
+        ref.attachment = 0; // depth
+        ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        auto& subpass = shadowPassInfo.m_Subpasses.emplace_back(); // 0
+        subpass = {};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 0; // No color attachments as we only want the depth buffer
+        subpass.pDepthStencilAttachment = &ref;
+
+        auto& dependency = shadowPassInfo.m_SubpassDependencies.emplace_back();
+        dependency = {};
+        dependency.dependencyFlags = 0;
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.srcAccessMask = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dependency.dstSubpass = 0;
+    }
+
+    m_ShadowRenderPass = std::make_unique<RenderPass>(*m_ServiceLocator, shadowPassInfo);
+    m_ServiceLocator->m_RenderPasses.emplace(ShadowPass, m_ShadowRenderPass.get());
 }
 
 void krt::Application::CreateSemaphores()
@@ -326,39 +385,65 @@ void krt::Application::CreateSemaphores()
 
 void krt::Application::LoadAssets()
 {
+    glm::mat4 transl = glm::translate(glm::identity<glm::mat4>(), glm::vec3(1.0f, 2.0f, 3.0f));
+    glm::mat4 perspTest = glm::perspective(45.0f, 1.0f, 0.1f, 15.0f);
+
+    glm::vec4 testV(0.0f, 0.0f, 5.0f, 1.0f);
+
+    glm::vec4 fin = perspTest * testV;
+
     printf("Loading assets\n");
 
     auto& transferQueue = m_LogicalDevice->GetCommandQueue(ETransferQueue);
 
+    m_TestShadowMap = std::make_unique<CubeShadowMap>(*m_ServiceLocator);
     auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Sponza/Sponza.gltf");
-    //auto res = m_ModelManager->LoadGltf("../../../../Assets/Models/Cube.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/NormalTangentMirrorTest.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/CrowdKing/JL.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Lantern/Lantern.gltf");
     //auto res = m_ModelManager->LoadGltf("../../../../Assets/GLTF/Tests/TwoSidedPlane.gltf");
 
+    auto cubeRes = m_ModelManager->LoadGltf("../../../../Assets/Models/Cube.gltf");
     m_Sponza = res->GetScene();
 
     m_Light = m_Sponza->AddPointLight();
-    m_Light->SetPosition(glm::vec3(-5.0f, 2.0f, 0.0f));
+    //m_Light->SetPosition(glm::vec3(19.0f, 16.0f, 0.0f));
 
-    m_Light1 = m_Sponza->AddPointLight();
-    m_Light1->SetPosition(glm::vec3(5.0f, 2.0f, 0.0f));
+    //m_Light1 = m_Sponza->AddPointLight();
+    //m_Light1->SetPosition(glm::vec3(5.0f, 2.0f, 0.0f));
 
     m_Camera = std::make_unique<Camera>();
-    m_Camera->SetPosition(glm::vec3(0.0f, 0.0f, -5.0f));
+    m_Camera->SetPosition(glm::vec3(0.0f, 0.0f, -0.0f));
+    m_Camera->SetRotation(glm::vec3(0.0f, 0.0f, 0.0f));
     m_Camera->SetAspectRatio(m_Window->GetAspectRatio());
     m_Camera->SetFarClipDistance(150.0f);
     m_Sponza->m_ActiveCamera = m_Camera.get();
 
     m_Sponza->m_StaticMeshes[0]->m_Transform->SetRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+    m_Sponza->m_StaticMeshes[0]->m_Transform->SetPosition(glm::vec3(-0.0f, 0.0f, 0.0f));
+    //m_Sponza->m_StaticMeshes[0]->m_Transform->SetScale(glm::vec3(0.02f));
+    //m_Sponza->m_StaticMeshes[0]->m_Transform->SetScale(glm::vec3(-1.0f, 40.0f, 70.0f));
+
+    m_Sponza->m_StaticMeshes.push_back(std::make_unique<StaticMesh>());
+    m_DebugCube = m_Sponza->m_StaticMeshes.back().get();
+    m_Sponza->m_StaticMeshes.push_back(std::make_unique<StaticMesh>());
+    m_DebugCube1 = m_Sponza->m_StaticMeshes.back().get();
+
+    m_DebugCube1->m_Enabled = false;
+
+    m_DebugCube->SetMesh(cubeRes->GetMesh());
+    m_DebugCube1->SetMesh(cubeRes->GetMesh());
+
+    m_DebugCube->m_Transform->SetScale(glm::vec3(0.1f, 0.1f, 0.1f));
+    m_DebugCube1->m_Transform->SetScale(glm::vec3(10.0f, 10.0f, 10.0f));
 
     transferQueue.Flush();
+
 
     printf("All assets loaded.\n");
 }
 
-void krt::Application::DrawFrame()
+krt::Semaphore krt::Application::DrawFrame(krt::Semaphore a_LastFrameSem)
 {
     auto imageAvailableSem = m_SemaphoreAllocator->GetSemaphore();
     auto drawFinishedSem = m_SemaphoreAllocator->GetSemaphore();
@@ -380,25 +465,32 @@ void krt::Application::DrawFrame()
     auto& commandBuffer = m_LogicalDevice->GetCommandQueue(EGraphicsQueue).GetSingleUseCommandBuffer();
     commandBuffer.Begin();
 
-    auto framebuffer = m_ForwardRenderPass->CreateFramebuffer();
-    framebuffer->AddImageView(frameInfo.m_ImageView, 0);
-    framebuffer->AddTexture(*m_DepthBuffer, 1);
-    framebuffer->SetSize(screenSize);
-
-    commandBuffer.BeginRenderPass(*m_ForwardRenderPass, *framebuffer, m_Window->GetScreenRenderArea());
+    commandBuffer.BeginRenderPass(*m_ForwardRenderPass, *frameInfo.m_FrameBuffer, m_Window->GetScreenRenderArea());
     commandBuffer.SetScissorRect(scissor);
     commandBuffer.SetViewport(viewport);
     commandBuffer.BindPipeline(*m_GraphicsPipeline);
 
     glm::mat4 cameraMatrix = m_Camera->GetCameraMatrix();
 
-    SemaphoreWait semWait;
+    SemaphoreWait semWait = GenerateShadowMaps();
 
+    //auto signalSem = m_SemaphoreAllocator->GetSemaphore();
+
+    if (a_LastFrameSem)
+    {
+        //commandBuffer.AddWaitSemaphore(a_LastFrameSem, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
+
+    commandBuffer.AddWaitSemaphore(semWait.m_Semaphore, semWait.m_StageFlags);
     commandBuffer.SetDescriptorSet(m_Sponza->GetLightsDescriptorSet(semWait), 1);    
     commandBuffer.AddWaitSemaphore(semWait.m_Semaphore, semWait.m_StageFlags);
+    //commandBuffer.AddSignalSemaphore(signalSem);
 
     for (auto& mesh : m_Sponza->m_StaticMeshes)
     {
+        if (!mesh->m_Enabled)
+            continue;
+
         auto& m = *mesh;
         glm::mat4 mvp;
 
@@ -411,10 +503,9 @@ void krt::Application::DrawFrame()
         commandBuffer.PushConstant(mats, 0);
 
         for (auto& primitive : m->m_Primitives)
-        {
-            
-            commandBuffer.SetVertexBuffer(*primitive.m_TexCoords, 0);
-            commandBuffer.SetVertexBuffer(*primitive.m_Positions, 1);
+        {            
+            commandBuffer.SetVertexBuffer(*primitive.m_Positions, 0);
+            commandBuffer.SetVertexBuffer(*primitive.m_TexCoords, 1);
             commandBuffer.SetVertexBuffer(*primitive.m_VertexColors, 2);
             commandBuffer.SetVertexBuffer(*primitive.m_Normals, 3);          
             commandBuffer.SetVertexBuffer(*primitive.m_Tangents, 4);
@@ -441,16 +532,19 @@ void krt::Application::DrawFrame()
     commandBuffer.AddWaitSemaphore(imageAvailableSem, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     commandBuffer.Submit();
 
-    m_ImGui->Display(frameInfo.m_ImageView, { drawFinishedSem });
+    m_ImGui->Display(frameInfo.m_FrameIndex, { drawFinishedSem });
 
     auto& presentQueue = m_ServiceLocator->m_LogicalDevice->GetCommandQueue(EPresentQueue);
     std::vector<Semaphore> presentSemaphores;
     presentSemaphores.push_back(drawFinishedSem);
 
     // Can do all ImGui after the present call, since at this point the CPU is already waiting for the GPU due to the lack of good management on my end.
+    auto meshTransform = m_Sponza->m_StaticMeshes[0]->m_Transform.get();
     m_Window->Present(frameInfo.m_FrameIndex, presentQueue, presentSemaphores);
-    glm::vec3 p = m_Sponza->m_StaticMeshes[0]->m_Transform->GetPosition();
-    glm::vec3 r = m_Sponza->m_StaticMeshes[0]->m_Transform->GetRotationEuler();
+
+    glm::vec3 p = meshTransform->GetPosition();
+    glm::vec3 r = meshTransform->GetRotationEuler();
+    glm::vec3 s = meshTransform->GetScale();
     glm::vec3 v;
     glm::vec3 c;
 
@@ -458,6 +552,7 @@ void krt::Application::DrawFrame()
     ImGui::Begin("Debug");
     ImGui::DragFloat3("Model Position", &p[0]);
     ImGui::DragFloat3("Model Rotation", &r[0]);
+    ImGui::DragFloat3("Model Scale", &s[0]);
     v = m_Light->GetPosition();
     c = m_Light->GetColor();
     ImGui::DragFloat3("Light Position", &v[0]);
@@ -465,18 +560,29 @@ void krt::Application::DrawFrame()
     m_Light->SetColor(c);
     m_Light->SetPosition(v);
 
-    v = m_Light1->GetPosition();
-    c = m_Light1->GetColor();
-    ImGui::DragFloat3("Light1 Position", &v[0]);
-    ImGui::ColorEdit3("Light1 Color", &c[0], ImGuiColorEditFlags_Float);
-    m_Light1->SetColor(c);
-    m_Light1->SetPosition(v);
+    if (std::abs(r.y) > 90.0f && std::abs(meshTransform->GetRotationEuler().y) < 90.0f)
+    {
+        //r.x += 180.0f;
+        //r.z += 180.0f;
+        r.y += 180.0f;
+    }
+
+    auto dif = r - meshTransform->GetRotationEuler();
+
+    auto difQuat = glm::quat(glm::radians(dif));
+
+    auto newRot = difQuat * meshTransform->GetRotationQuat();
 
     ImGui::End();
-    m_Sponza->m_StaticMeshes[0]->m_Transform->SetPosition(p);
-    m_Sponza->m_StaticMeshes[0]->m_Transform->SetRotation(r);
+    meshTransform->SetPosition(p);
+    meshTransform->SetRotation(newRot);
+    meshTransform->SetScale(s);
 
-    presentQueue.Flush();
+    m_DebugCube->m_Transform->SetPosition(m_Light->GetPosition());
+
+    //presentQueue.Flush();
+
+    return drawFinishedSem;
 }
 
 void krt::Application::Cleanup()
@@ -499,6 +605,105 @@ VkBool32 krt::Application::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT 
     return VK_FALSE;
 }
 
+krt::SemaphoreWait krt::Application::GenerateShadowMaps()
+{
+    auto& cmdBuffer = m_LogicalDevice->GetCommandQueue(EGraphicsQueue).GetSingleUseCommandBuffer();
+
+    cmdBuffer.Begin();
+    auto depthViews = m_TestShadowMap->GetDepthViews();
+
+    auto& light = m_Light;
+
+    auto& fbs = light->GetFramebuffers();
+
+
+
+    for (int i = 0; i < 6; i++)
+    {
+        VkRect2D renderArea = {};
+        renderArea.offset.x = 0;
+        renderArea.offset.y = 0;
+        renderArea.extent.width = 2048;
+        renderArea.extent.height = 2048;
+
+        cmdBuffer.BeginRenderPass(*m_ShadowRenderPass, *fbs[i], renderArea);
+        cmdBuffer.SetScissorRect(renderArea);
+        cmdBuffer.SetViewport(VkViewport{ 0.0f, 0.0f, 2048.0f, 2048.0f, 0.0f, 1.0f });
+        cmdBuffer.BindPipeline(*m_ShadowPipeline);
+
+
+        static const glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 20.0f);
+        static const glm::vec3 lookDir[6] = {
+            glm::vec3(1.0f,  0.0f,  0.0f),
+            glm::vec3(-1.0f,  0.0f,  0.0f),
+            glm::vec3( 0.0f, -1.0f,  0.0f),
+            glm::vec3( 0.0f, 1.0f,  0.0f),
+            glm::vec3( 0.0f,  0.0f, 1.0f),
+            glm::vec3( 0.0f,  0.0f, -1.0f)
+        };
+
+        // TODO: This will likely fuck it up, particularly when up isn't (0.0f, 1.0f, 0.0f)
+        static const glm::vec3 up[6] = {
+            glm::vec3(0.0f,  1.0f,  0.0f),
+            glm::vec3(0.0f,  1.0f,  0.0f),
+            glm::vec3(0.0f,  0.0f,  1.0f),
+            glm::vec3(0.0f,  0.0f,  -1.0f),
+            glm::vec3(0.0f,  1.0f,  0.0f),
+            glm::vec3(0.0f,  1.0f,  0.0f)
+        };
+
+        auto eye = light->GetPosition();
+        auto center = eye + lookDir[i];
+        auto lookat = glm::lookAt(eye, center, up[i]);
+
+        glm::mat4 cameraMatrix = proj * lookat;
+
+        for (auto& mesh : m_Sponza->m_StaticMeshes)
+        {
+            if (!mesh->m_Enabled)
+                continue;
+            if (m_DebugCube == mesh.get())
+            {
+                continue;
+            }
+            auto& m = *mesh;
+            glm::mat4 mvp = cameraMatrix * mesh->m_Transform->GetTransformationMatrix();
+
+            cmdBuffer.PushConstant(mvp, 0);
+
+            for (auto& primitive : m->m_Primitives)
+            {
+                cmdBuffer.SetVertexBuffer(*primitive.m_Positions, 0);
+
+                if (primitive.m_IndexBuffer)
+                {
+                    cmdBuffer.SetIndexBuffer(*primitive.m_IndexBuffer);
+                    cmdBuffer.DrawIndexed(primitive.m_IndexBuffer->GetElementCount());
+                }
+                else
+                {
+                    cmdBuffer.Draw(primitive.m_Positions->GetElementCount());
+                }
+            }
+        }
+
+        cmdBuffer.EndRenderPass();
+    }
+
+    auto sem = m_ServiceLocator->m_SemaphoreAllocator->GetSemaphore();
+    cmdBuffer.AddSignalSemaphore(sem);
+    cmdBuffer.Submit();
+    light->GetShadowMap().TransitionLayoutToShaderRead(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+
+    SemaphoreWait semWait;
+    semWait.m_Semaphore = sem;
+    semWait.m_StageFlags = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+    //m_LogicalDevice->GetCommandQueue(EGraphicsQueue).Flush();
+
+    return semWait;
+}
+
 void krt::Application::InitializeImGui()
 {
     m_ImGui = std::make_unique<VkImGui>(*m_ServiceLocator, *m_ForwardRenderPass);
@@ -509,8 +714,8 @@ void krt::Application::ProcessInput()
 {
     auto cameraRotation = glm::mat4_cast(m_Camera->GetRotationQuat());
 
-    auto forward4 = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) * cameraRotation;
-    auto right4 = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) *  cameraRotation;
+    auto forward4 = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) * cameraRotation * 1.0f;
+    auto right4 = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) * cameraRotation * 1.0f;
 
     auto forward = glm::vec3(forward4.x, forward4.y, forward4.z);
     auto right = glm::vec3(right4.x, right4.y, right4.z);
@@ -554,6 +759,16 @@ void krt::Application::ProcessInput()
     {
         m_Camera->Rotate(glm::vec3(0.0f, -30.0f * 1.0f / 60.0f, 0.0f));
     };
+
+
+    /*if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_UP))
+    {
+        m_Camera->Rotate(glm::vec3(30.0f * 0.0f / 60.0f, 0.0f, 30.0f * 1.0f / 60.0f));
+    }
+    else if (glfwGetKey(m_Window->GetGLFWwindow(), GLFW_KEY_DOWN))
+    {
+        m_Camera->Rotate(glm::vec3(-30.0f * 0.0f / 60.0f, 0.0f, -30.0f * 1.0f / 60.0f));
+    };*/
 }
 
 void krt::Application::FocusCallback(GLFWwindow*, int a_Focus)

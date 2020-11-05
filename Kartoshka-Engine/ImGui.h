@@ -22,13 +22,13 @@ namespace krt
         VkImGui(ServiceLocator& a_Services, RenderPass& a_RenderPass);
         ~VkImGui();
 
-        void Display(VkImageView a_ScreenImageView, std::vector<Semaphore> a_SignalSemaphores);
+        void Display(uint32_t a_FramebufferIndex, Semaphore a_SignalSemaphore);
 
 
     private:
         void CreateRenderPass();
 
-        std::unique_ptr<Framebuffer> m_FrameBuffer;
+        std::vector<std::unique_ptr<Framebuffer>> m_FrameBuffers;
 
         ServiceLocator& m_Services;
 

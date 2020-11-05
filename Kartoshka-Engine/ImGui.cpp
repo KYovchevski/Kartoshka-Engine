@@ -83,7 +83,7 @@ krt::VkImGui::~VkImGui()
     ImGui_ImplVulkan_Shutdown();
 }
 
-void krt::VkImGui::Display(VkImageView a_ScreenImageView, std::vector<Semaphore> a_SignalSemaphores)
+void krt::VkImGui::Display(uint32_t a_FramebufferIndex, krt::Semaphore a_SignalSemaphore)
 {
     ImGui::Render();
 
@@ -93,20 +93,13 @@ void krt::VkImGui::Display(VkImageView a_ScreenImageView, std::vector<Semaphore>
 
     auto screenSize = m_Services.m_Window->GetScreenSize();
 
-    m_FrameBuffer = m_RenderPass->CreateFramebuffer();
-    m_FrameBuffer->AddImageView(a_ScreenImageView, 0);
-    m_FrameBuffer->SetSize(screenSize);
-
-    commandBuffer.BeginRenderPass(*m_RenderPass, *m_FrameBuffer, m_Services.m_Window->GetScreenRenderArea());
+    commandBuffer.BeginRenderPass(*m_RenderPass, *m_FrameBuffers[a_FramebufferIndex], m_Services.m_Window->GetScreenRenderArea());
 
     ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffer.GetVkCommandBuffer());
 
     commandBuffer.EndRenderPass();
 
-    for (auto& signalSemaphore : a_SignalSemaphores)
-    {
-        commandBuffer.AddSignalSemaphore(signalSemaphore);
-    }
+    commandBuffer.AddSignalSemaphore(a_SignalSemaphore);
 
     commandBuffer.Submit();
 
@@ -147,4 +140,15 @@ void krt::VkImGui::CreateRenderPass()
     info.m_SubpassDependencies.push_back(dependency);
 
     m_RenderPass = std::make_unique<RenderPass>(m_Services, info);
+
+    auto screenImageViews = m_Services.m_Window->GetScreenBufferImageViews();
+
+    const auto& screenSize = m_Services.m_Window->GetScreenSize();
+
+    for (auto screenImageView : screenImageViews)
+    {
+        auto& fb = m_FrameBuffers.emplace_back(m_RenderPass->CreateFramebuffer());
+        fb->AddImageView(screenImageView, 0);
+        fb->SetSize(screenSize);
+    }
 }

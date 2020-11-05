@@ -115,12 +115,12 @@ namespace krt
         // Transfers the CPU data to a GPU buffer, even if the buffer is not in host visible memory.
         // Returns true if the target buffer was resized, false otherwise.
         bool UploadToBuffer(const void* a_Data, VkDeviceSize a_DataSize, Buffer& a_TargetBuffer);
+        void TransitionImageLayout(VkImage a_VkImage, VkImageLayout a_OldLayout, VkImageLayout a_NewLayout, VkAccessFlags a_SrcAccessMask, VkAccessFlags
+                                   a_DstAccessMask, VkPipelineStageFlags a_SrcStageMask, VkPipelineStageFlags a_DstStageMask);
     private:
 
         void BindDescriptorSets();
 
-        void TransitionImageLayout(VkImage a_VkImage, VkImageLayout a_OldLayout, VkImageLayout a_NewLayout, VkAccessFlags a_SrcAccessMask, VkAccessFlags
-                                   a_DstAccessMask, VkPipelineStageFlags a_SrcStageMask, VkPipelineStageFlags a_DstStageMask);
 
 
 

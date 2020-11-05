@@ -1,7 +1,6 @@
 
 #include "Application.h"
 
-
 int main()
 {
     krt::Application app;
@@ -9,7 +8,6 @@ int main()
     init.m_Width = 1440;
     init.m_Height = 900;
     init.m_Title = "Kartofelnoe Pyure";
-
 
     app.Run(init);
 }

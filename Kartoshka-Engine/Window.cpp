@@ -5,8 +5,12 @@
 #include "PhysicalDevice.h"
 #include "RenderPass.h"
 #include "CommandQueue.h"
+#include "Framebuffer.h"
+#include "DepthBuffer.h"
 
 #include "VkHelpers.h"
+
+#include "glm/vec4.hpp"
 
 krt::Window::Window(ServiceLocator& a_Services, glm::uvec2 a_Size, std::string a_Title)
     : m_Services(a_Services)
@@ -91,6 +95,25 @@ void krt::Window::InitializeSwapchain()
     vkGetSwapchainImagesKHR(m_Services.m_LogicalDevice->GetVkDevice(), m_VkSwapChain, &swapChainImageCount, m_SwapChainImages.data());
 
     CreateImageViews();
+
+
+    auto depthFormat = m_Services.m_PhysicalDevice->FindSupportedFormat({ VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT },
+        VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+    std::set<ECommandQueueType> qt = { EGraphicsQueue };
+    m_DepthBuffer = std::make_unique<DepthBuffer>(m_Services, m_ScreenSize.x, m_ScreenSize.y, depthFormat, qt);
+}
+
+void krt::Window::CreateFrameBuffers(RenderPass& a_TargetRenderPass)
+{
+    for (auto& imageView : m_SwapChainImageViews)
+    {
+        auto& fb = m_Framebuffers.emplace_back(a_TargetRenderPass.CreateFramebuffer());
+        fb->AddImageView(imageView, 0);
+        fb->AddImageView(m_DepthBuffer->GetVkImageView(), 1);
+        fb->SetSize(m_ScreenSize);
+        fb->SetClearValues(1.0f, 0, 1);
+    }
 }
 
 krt::Window::NextFrameInfo krt::Window::GetNextFrameInfo(Semaphore a_SemaphoreToSignal, VkFence a_FenceToSignal)
@@ -99,7 +122,7 @@ krt::Window::NextFrameInfo krt::Window::GetNextFrameInfo(Semaphore a_SemaphoreTo
 
     vkAcquireNextImageKHR(m_Services.m_LogicalDevice->GetVkDevice(), m_VkSwapChain, std::numeric_limits<uint64_t>::max(), **a_SemaphoreToSignal, a_FenceToSignal, &info.m_FrameIndex);
 
-    info.m_ImageView = m_SwapChainImageViews[info.m_FrameIndex];
+    info.m_FrameBuffer = m_Framebuffers[info.m_FrameIndex].get();
     return info;
 }
 
@@ -161,6 +184,11 @@ VkRect2D krt::Window::GetScreenRenderArea() const
     return r;
 }
 
+krt::DepthBuffer& krt::Window::GetDepthBuffer()
+{
+    return *m_DepthBuffer;
+}
+
 bool krt::Window::ShouldClose() const
 {
     bool shouldClose = glfwWindowShouldClose(m_Window);
@@ -184,13 +212,18 @@ void krt::Window::SetWindowTitle(std::string a_NewTitle)
     glfwSetWindowTitle(m_Window, m_WindowTitle.c_str());
 }
 
+void krt::Window::SetClearColor(glm::vec4 a_NewClearColor)
+{
+    for (auto& framebuffer : m_Framebuffers)
+    {
+        framebuffer->SetClearValues(a_NewClearColor, 0);
+    }
+}
+
 void krt::Window::DestroySwapChain()
 {
     const auto dev = m_Services.m_LogicalDevice->GetVkDevice();
     const auto alloc = m_Services.m_AllocationCallbacks;
-
-    for (auto& framebuffer : m_Framebuffers)
-        vkDestroyFramebuffer(dev, framebuffer, alloc);
 
     for (auto& swapChainImageView : m_SwapChainImageViews)
         vkDestroyImageView(dev, swapChainImageView, alloc);

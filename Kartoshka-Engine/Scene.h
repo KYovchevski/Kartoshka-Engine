@@ -11,6 +11,7 @@ namespace krt
     class DescriptorSet;
     class PointLight;
     class Camera;
+    class Sampler;
 }
 
 namespace krt
@@ -35,6 +36,7 @@ namespace krt
 
         std::vector<std::unique_ptr<PointLight>> m_PointLights;
         mutable std::unique_ptr<DescriptorSet> m_LightsDescriptorSet;
+        std::unique_ptr<Sampler> m_ShadowMapSampler;
         mutable bool m_LightsDescriptorSetDirty;
 
 

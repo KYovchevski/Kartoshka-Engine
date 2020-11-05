@@ -2,3 +2,5 @@
 call "G:\RandomCode\Kartoshka-Engine\Tools\ShaderCompile.bat" "G:\RandomCode\Kartoshka-Engine\Shaders\Fragment" "G:\RandomCode\Kartoshka-Engine\\Build\SpirV\"
 ^G:\RANDOMCODE\KARTOSHKA-ENGINE\SHADERS\VERTEX.GLSL
 call "G:\RandomCode\Kartoshka-Engine\Tools\ShaderCompile.bat" "G:\RandomCode\Kartoshka-Engine\Shaders\Vertex" "G:\RandomCode\Kartoshka-Engine\\Build\SpirV\"
+^G:\RANDOMCODE\KARTOSHKA-ENGINE\SHADERS\SHADOWVERTEX.GLSL
+call "G:\RandomCode\Kartoshka-Engine\Tools\ShaderCompile.bat" "G:\RandomCode\Kartoshka-Engine\Shaders\ShadowVertex" "G:\RandomCode\Kartoshka-Engine\\Build\SpirV\"

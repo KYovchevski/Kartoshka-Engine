@@ -25,6 +25,8 @@ namespace krt
 
         void SetMesh(std::shared_ptr<Mesh> a_Mesh) { m_Mesh = a_Mesh; }
 
+        bool m_Enabled;
+
     private:
         std::shared_ptr<Mesh> m_Mesh;
     };

@@ -9,6 +9,8 @@
 #include <optional>
 #include <map>
 
+#include "SemaphoreWait.h"
+
 namespace krt
 {
     struct ServiceLocator;
@@ -30,6 +32,8 @@ namespace krt
     class PointLight;
     class VkImGui;
     class SemaphoreAllocator;
+    class CubeShadowMap;
+    class StaticMesh;
 
     class Camera;
     class Transform;
@@ -79,8 +83,6 @@ namespace krt
         void                InitializeVulkan(const InitializationInfo& a_Info);
         void                SetupDebugMessenger();
 
-        void                CreateDepthBuffer();
-
         void                CreateGraphicsPipeline();
 
         void                CreateRenderPass();
@@ -88,7 +90,7 @@ namespace krt
 
         void                LoadAssets();
 
-        void                DrawFrame();
+        Semaphore DrawFrame(Semaphore a_LastFrameSem);
         void Cleanup();     // Cleans up after the application is finished running
 
         void ParseInitializationInfo(const InitializationInfo& a_Info);
@@ -101,6 +103,8 @@ namespace krt
             void* a_UserData);
 
     private:
+
+        krt::SemaphoreWait GenerateShadowMaps();
 
         void InitializeImGui();
 
@@ -120,7 +124,6 @@ namespace krt
         std::unique_ptr<ServiceLocator> m_ServiceLocator;
 
         std::unique_ptr<Window>         m_Window;
-        std::unique_ptr<DepthBuffer>    m_DepthBuffer;
 
         std::unique_ptr<PhysicalDevice> m_PhysicalDevice;
         std::unique_ptr<LogicalDevice>  m_LogicalDevice;
@@ -129,10 +132,17 @@ namespace krt
         std::unique_ptr<ModelManager>   m_ModelManager;
 
         std::unique_ptr<RenderPass>     m_ForwardRenderPass;
+        std::unique_ptr<RenderPass>     m_ShadowRenderPass;
         std::unique_ptr<GraphicsPipeline> m_GraphicsPipeline;
+        std::unique_ptr<GraphicsPipeline> m_ShadowPipeline;
         std::unique_ptr<VkImGui>        m_ImGui;
 
         std::unique_ptr<Camera>         m_Camera;
+
+        std::unique_ptr<CubeShadowMap>  m_TestShadowMap;
+
+        StaticMesh*                      m_DebugCube;
+        StaticMesh*                      m_DebugCube1;
 
         PointLight*                     m_Light;
         PointLight*                     m_Light1;

@@ -6,15 +6,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\Shaders\BasePixelShader.hlsl" />
-    <CustomBuild Include="..\Shaders\BaseVertexShader.hlsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\Shaders\Fragment.glsl">
+    <CustomBuild Include="..\Shaders\Fragment.glsl" />
+    <CustomBuild Include="..\Shaders\Vertex.glsl" />
+    <CustomBuild Include="..\Shaders\ShadowVertex.glsl">
       <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\Shaders\Vertex.glsl">
-      <Filter>Shaders</Filter>
-    </None>
+    </CustomBuild>
   </ItemGroup>
 </Project>

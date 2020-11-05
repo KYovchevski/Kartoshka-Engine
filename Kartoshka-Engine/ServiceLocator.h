@@ -13,10 +13,25 @@ namespace krt
     class ModelManager;
     class GraphicsPipeline;
     class SemaphoreAllocator;
+    class RenderPass;
 }
 
 namespace krt
 {
+    enum Pipelines
+        : uint16_t
+    {
+        Forward = 0,
+        ShadowMap
+    };
+
+    enum RenderPasses
+        : uint16_t
+    {
+        ForwardPass = 0,
+        ShadowPass
+    };
+
     struct ServiceLocator
     {
         VkAllocationCallbacks* m_AllocationCallbacks;
@@ -27,7 +42,8 @@ namespace krt
         ModelManager* m_ModelManager;
         SemaphoreAllocator* m_SemaphoreAllocator;
 
-        std::map<std::string, GraphicsPipeline*> m_GraphicsPipelines;
+        std::map<Pipelines, GraphicsPipeline*> m_GraphicsPipelines;
+        std::map<RenderPasses, RenderPass*> m_RenderPasses;
     };
 
 }

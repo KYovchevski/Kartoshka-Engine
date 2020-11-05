@@ -6,7 +6,7 @@
 #include "CommandQueue.h"
 
 krt::DepthBuffer::DepthBuffer(ServiceLocator& a_Services, uint32_t a_Width, uint32_t a_Height,
-    VkFormat a_Format, std::set<ECommandQueueType> a_UsingQueues)
+    VkFormat a_Format, std::set<ECommandQueueType>& a_UsingQueues)
     : Texture(a_Services, a_Format)
 {
     std::set<uint32_t> uniqueIndices;

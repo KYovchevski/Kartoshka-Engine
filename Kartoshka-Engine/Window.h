@@ -1,10 +1,11 @@
 #pragma once
 
+#include "SemaphoreAllocator.h"
 
 #include "vulkan/vulkan.h"
 #include <GLFW/glfw3.h>
 #include "glm/vec2.hpp"
-#include "SemaphoreAllocator.h"
+#include "glm/fwd.hpp"
 
 #include <string>
 #include <vector>
@@ -15,6 +16,8 @@ namespace krt
     class CommandQueue;
     struct ServiceLocator;
     class RenderPass;
+    class Framebuffer;
+    class DepthBuffer;
 
 }
 
@@ -24,7 +27,7 @@ namespace krt
     {
         struct NextFrameInfo
         {
-            VkImageView m_ImageView;
+            krt::Framebuffer* m_FrameBuffer;
             uint32_t m_FrameIndex;
         };
 
@@ -39,8 +42,12 @@ namespace krt
 
         void InitializeSwapchain();
 
+        void CreateFrameBuffers(RenderPass& a_TargetRenderPass);
+
         NextFrameInfo GetNextFrameInfo(Semaphore a_SemaphoreToSignal, VkFence a_FenceToSignal = VK_NULL_HANDLE);
         void Present(uint32_t a_FrameToPresentIndex, CommandQueue& a_CommandQueue, std::vector<Semaphore>& a_SemaphoresToWait);
+
+
 
         VkFormat GetRenderSurfaceFormat() const;
         VkSurfaceKHR GetRenderSurface();
@@ -51,11 +58,16 @@ namespace krt
         uint32_t GetMinImageCount() const { return m_MinImageCount; }
         uint32_t GetImageCount() const { return m_ImageCount; }
 
+        std::vector<VkImageView> GetScreenBufferImageViews() { return m_SwapChainImageViews; }
+
+        DepthBuffer& GetDepthBuffer();
+
         bool ShouldClose() const;
         void PollEvents();
 
         void Resize(glm::uvec2 a_NewSize);
         void SetWindowTitle(std::string a_NewTitle);
+        void SetClearColor(glm::vec4 a_NewClearColor);
 
         void DestroySwapChain();
 
@@ -76,11 +88,14 @@ namespace krt
         VkFormat        m_SwapChainFormat;
         VkExtent2D      m_SwapChainExtent;
 
+        std::unique_ptr<DepthBuffer>    m_DepthBuffer;
+
+
         uint32_t m_MinImageCount;
         uint32_t m_ImageCount;
 
-        std::vector<VkImage>        m_SwapChainImages;
-        std::vector<VkImageView>    m_SwapChainImageViews;
-        std::vector<VkFramebuffer>  m_Framebuffers;
+        std::vector<VkImage>                        m_SwapChainImages;
+        std::vector<VkImageView>                    m_SwapChainImageViews;
+        std::vector<std::unique_ptr<Framebuffer>>   m_Framebuffers;
     };
 }

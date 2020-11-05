@@ -226,7 +226,7 @@ krt::GraphicsPipeline::GraphicsPipeline(ServiceLocator& a_Services, CreateInfo& 
 
     VkPipelineShaderStageCreateInfo stage = {};
     stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stage.pName = "main";
+    stage.pName = "main";   
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
     assert(vertexModule != VK_NULL_HANDLE);

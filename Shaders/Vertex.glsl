@@ -1,8 +1,8 @@
 #version 450
 #pragma shader_stage(vertex)
 
-layout (location = 0) in vec2 i_Tex;
-layout (location = 1) in vec3 i_Pos;
+layout (location = 0) in vec3 i_Pos;
+layout (location = 1) in vec2 i_Tex;
 layout (location = 2) in vec4 i_Color;
 layout (location = 3) in vec3 i_Normal;
 layout (location = 4) in vec4 i_Tangent;
@@ -14,8 +14,8 @@ layout(push_constant) uniform PushConstants
 	mat4 m_MVP; // Local to Clip
 } u_Push;
 
-layout (location = 0) out vec2 o_Tex;
 layout (location = 1) out vec3 o_WorldPosition;
+layout (location = 0) out vec2 o_Tex;
 layout (location = 2) out vec4 o_Color;
 layout (location = 3) out vec3 o_Normal;
 layout (location = 4) out mat3x3 o_TBN;
